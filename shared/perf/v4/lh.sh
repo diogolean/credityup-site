@@ -1,0 +1,2 @@
+ADS='--blocked-url-patterns=*doubleclick.net* --blocked-url-patterns=*googlesyndication.com* --blocked-url-patterns=*googletagservices.com* --blocked-url-patterns=*adservice.google* --blocked-url-patterns=*fundingchoicesmessages* --blocked-url-patterns=*googleadservices* --blocked-url-patterns=*viralnetwork*'
+CHROME_PATH=/usr/bin/google-chrome timeout 170 lighthouse "$1" $ADS --only-categories=performance --output=json --output-path=$2 --chrome-flags="--headless=new --no-sandbox" --quiet
