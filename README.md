@@ -9,7 +9,7 @@ Versionamento das customizações de **us.credityup.com** e **de.credityup.com**
 | `us/*.html`, `de/*.html` | HTML público das LPs principais (us lp-01, us lp-02, de lp-01, de lp-02-art01) baixado via curl | — (snapshot) |
 | `shared/snippets/04_rewarded_same_page_fix.html` | Wrapper de `JSON.parse` que troca o `redirect_url` (viralnetwork) dos botões do Rewarded pela própria URL (MODE `reload`) | wp-admin → HFCM (Header Footer Code Manager) → snippet **#4** "Rewarded same-page fix (header)", Header, Site Wide, Ativo — nos 2 sites |
 | `shared/snippets/05_cy_modern_loader.html` | Loader moderno (overlay rosa, coração, barra), mín 1,5s / máx 2,5s, some no `slotRenderEnded` do GPT | HFCM snippet **#5** "CY modern loader", Header — nos 2 sites |
-| `us/head_block_us_v1.html`, `de/head_block_de_v1.html` | Bloco exato do head: `gpt.js` + `window.wadsConfig` + `wads.js` **síncrono** + `<winupads tag="interstitial">` | Impresso no `<head>` fora do HFCM — vem do plugin **winup-ad-engine** (detalhes na branch `v2-wads-defer`, em `docs/wads-origin.md`) |
+| `us/head_block_us_v1.html`, `de/head_block_de_v1.html` | Bloco exato do head: `gpt.js` + `window.wadsConfig` + `wads.js` **síncrono** + `<winupads tag="interstitial">` | Impresso no `<head>` fora do HFCM — vem do plugin **winup-ad-engine** (ver [docs/wads-origin.md](docs/wads-origin.md)) |
 | `shared/perf/` | NOTES.md, Lighthouse (lh/REPORT.md, run.sh, JSONs), lt.py (teste do loader) | — |
 | `shared/tests/` | t.py / t_de.py: testes headless do redirect do Rewarded (anúncios reais bloqueados) | — |
 
@@ -19,3 +19,4 @@ Regra de testes: SEMPRE bloquear doubleclick, googlesyndication, googletagservic
 - `us/` e `de/`: arquivos específicos de cada site (snapshots e bloco do head)
 - `shared/`: snippets HFCM (iguais nos 2 sites), testes e perf
 - `docs/`: documentação (a partir da v2)
+| `shared/snippets/06_wads_defer_lp02.html`, `shared/tests/test_wads_defer.py` | v2: wads.js com defer + preconnect só na us lp-02 (NÃO instalado) | ver docs/wads-origin.md |
