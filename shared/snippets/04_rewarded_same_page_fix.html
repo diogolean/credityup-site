@@ -1,0 +1,17 @@
+(function(){
+  var MODE = 'reload'; // 'reload' = recarrega a mesma URL | 'stay' = só fecha o popup, sem recarregar
+  var P = JSON.parse;
+  JSON.parse = function(t, r){
+    var v = P.apply(this, arguments);
+    try {
+      if (Array.isArray(v)) v.forEach(function(b){
+        if (b && typeof b === 'object' && typeof b.redirect_url === 'string' && /viralnetwork\.com\.br/i.test(b.redirect_url)) {
+          var u = location.href.split('#')[0];
+          b.redirect_url = MODE === 'stay' ? u + '#ok' : u;
+          b.hash = '';
+        }
+      });
+    } catch(e){}
+    return v;
+  };
+})();

@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+	<meta charset='UTF-8'><link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin />
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="profile" href="http://gmpg.org/xfn/11">
+			<link rel="pingback" href="https://de.credityup.com/xmlrpc.php">
+		<title>Apps für lockere Begegnungen: Ihren Weg zur unkomplizierten Verabredung finden &#8211; De credityup</title>
+<meta name='robots' content='max-image-preview:large' />
+<!-- Rewarded Ad Modal: trava dos blocos de conteúdo -->
+<script data-cfasync="false" data-no-optimize="1" data-no-defer="1" data-no-minify="1">
+(function (w, d) {
+    if (w.ramAdGate) return;
+    var CFG = {"protect":true,"mode":"reward_auto","maxWait":3000,"cdKey":"ram_reward_cd_reward_ebedd7a9088c7ce81caeb59e74251b42","cdMs":86400000,"navKey":"","urlContains":[],"version":"1.1.0"};
+    var DEBUG = false;
+    try { DEBUG = /[?&]ram_debug=1/.test(w.location.search); } catch (e) {}
+
+    var held = false, timer = null, leaveTimer = null, capTimer = null, bypass = 0;
+    var domReady = false, gptReady = false;
+    var callbacks = [], qDisplay = [], qRefresh = [], lastRefreshOpts;
+    var orig = { display: null, refresh: null }, pubads = null, log = [];
+
+    var gate = {
+        version: CFG.version,
+        mode: CFG.mode,
+        enabled: !!CFG.protect,
+        held: false,        // true = blocos de conteúdo segurados
+        reason: '',         // motivo do último hold/release
+        contentWon: false,  // true = o tempo máximo estourou e o conteúdo ficou com a pageview
+        wrapped: false      // true = display()/refresh() do GPT estão sendo adiados pela trava
+    };
+
+    function note(ev, extra) {
+        var t = 0;
+        try { t = Math.round(w.performance.now()); } catch (e) {}
+        log.push({ t: t, ev: ev, info: extra == null ? '' : String(extra) });
+        if (log.length > 80) log.shift();
+        if (DEBUG && w.console) w.console.log('[RAM gate]', t + 'ms', ev, extra == null ? '' : extra);
+    }
+
+    function fire(name, why) {
+        try { d.dispatchEvent(new CustomEvent(name, { detail: { reason: why || '' } })); } catch (e) {}
+    }
+
+    function isArray(v) { return Object.prototype.toString.call(v) === '[object Array]'; }
+
+    function elFor(a) {
+        try {
+            if (!a) return null;
+            if (typeof a === 'string') return d.getElementById(a);
+            if (a.nodeType === 1) return a;
+            if (typeof a.getSlotElementId === 'function') return d.getElementById(a.getSlotElementId());
+        } catch (e) {}
+        return null;
+    }
+
+    function keyFor(a) {
+        try {
+            if (typeof a === 'string') return a;
+            if (a && a.nodeType === 1) return a.id || a;
+            if (a && typeof a.getSlotElementId === 'function') return a.getSlotElementId();
+        } catch (e) {}
+        return a;
+    }
+
+    function slotFor(a) {
+        try {
+            if (a && typeof a.getSlotElementId === 'function') return a;
+            var k = keyFor(a), list = (pubads && pubads.getSlots) ? pubads.getSlots() : [];
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].getSlotElementId() === k) return list[i];
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    // "Dentro da página" = bloco com um elemento do site no DOM (banner no conteúdo).
+    // Rewarded / interstitial / âncora do GPT não têm elemento próprio antes de
+    // preencher, então passam direto e nunca são adiados.
+    function isInPage(a) {
+        if (!elFor(a)) return false;
+        var s = slotFor(a);
+        try { if (s && typeof s.getOutOfPage === 'function' && s.getOutOfPage()) return false; } catch (e) {}
+        return true;
+    }
+
+    function has(list, k) {
+        for (var i = 0; i < list.length; i++) if (list[i] === k) return true;
+        return false;
+    }
+
+    function install() {
+        gptReady = true;
+        armTimeout();
+        try {
+            var g = w.googletag;
+            if (gate.wrapped || !g || typeof g.display !== 'function') return;
+            pubads = typeof g.pubads === 'function' ? g.pubads() : null;
+
+            orig.display = g.display;
+            var heldDisplay = function (a) {
+                if (bypass || !held || !isInPage(a)) return orig.display.apply(g, arguments);
+                var k = keyFor(a);
+                for (var i = 0; i < qDisplay.length; i++) if (qDisplay[i].k === k) return;
+                qDisplay.push({ k: k, a: a });
+                note('display adiado', k);
+            };
+            g.display = heldDisplay;
+
+            if (pubads && typeof pubads.refresh === 'function') {
+                orig.refresh = pubads.refresh;
+                pubads.refresh = function (slots, opts) {
+                    if (bypass || !held) return orig.refresh.apply(pubads, arguments);
+                    var list = slots == null
+                        ? (pubads.getSlots ? pubads.getSlots() : [])
+                        : (isArray(slots) ? slots : [slots]);
+                    var pass = [];
+                    for (var i = 0; i < list.length; i++) {
+                        if (isInPage(list[i])) {
+                            if (!has(qRefresh, list[i])) qRefresh.push(list[i]);
+                            note('refresh adiado', keyFor(list[i]));
+                        } else {
+                            pass.push(list[i]);
+                        }
+                    }
+                    lastRefreshOpts = opts;
+                    if (pass.length) return orig.refresh.call(pubads, pass, opts);
+                };
+            }
+
+            gate.wrapped = (g.display === heldDisplay);
+            note(gate.wrapped ? 'trava instalada no GPT' : 'GPT nao permitiu a trava (so integracao nativa)');
+        } catch (e) {
+            note('erro ao instalar a trava', e);
+        }
+    }
+
+    // Executa, uma única vez e na ordem original, o que foi adiado.
+    function flush() {
+        var dq = qDisplay, rq = qRefresh, shown = [], rest = [], i;
+        qDisplay = []; qRefresh = [];
+        for (i = 0; i < dq.length; i++) {
+            shown.push(dq[i].k);
+            try { orig.display.call(w.googletag, dq[i].a); } catch (e) { note('erro no display adiado', e); }
+        }
+        // Um bloco cujo display() acabou de rodar já foi requisitado: não repetir com refresh().
+        for (i = 0; i < rq.length; i++) if (!has(shown, keyFor(rq[i]))) rest.push(rq[i]);
+        if (rest.length && orig.refresh) {
+            try { orig.refresh.call(pubads, rest, lastRefreshOpts); } catch (e) { note('erro no refresh adiado', e); }
+        }
+        if (dq.length || rest.length) note('conteudo liberado', dq.length + ' display, ' + rest.length + ' refresh');
+    }
+
+    function overlayVisible() {
+        try {
+            var m = d.getElementById('masterRewarded');
+            if (m && /(^|\s)active(\s|$)/.test(m.className)) return true;
+            var q = d.getElementById('ramQuizOverlay');
+            if (q && w.getComputedStyle(q).display !== 'none') return true;
+        } catch (e) {}
+        return false;
+    }
+
+    function clearTimers() {
+        if (timer) { clearTimeout(timer); timer = null; }
+        if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; }
+        if (capTimer) { clearTimeout(capTimer); capTimer = null; }
+    }
+
+    // Tempo máximo de espera pelo rewarded. Só começa a contar quando o DOM está pronto E o GPT
+    // carregou — antes disso nenhum anúncio (nem o rewarded) poderia ter sido pedido, então não
+    // faria sentido "desistir" do rewarded (ex.: sites que atrasam os scripts até a 1ª interação).
+    function armTimeout() {
+        if (!held || timer || gate.reason !== 'load' || !domReady || !gptReady) return;
+        timer = setTimeout(function () { timer = null; gate.release('timeout'); }, CFG.maxWait);
+    }
+
+    function sraOn() {
+        try { if (pubads && typeof pubads.isSRA === 'function') return !!pubads.isSRA(); } catch (e) {}
+        return null;
+    }
+
+    /**
+     * Segura os blocos de conteúdo. Chamado quando o popup/quiz/rewarded passa a
+     * cobrir a página. Sem tempo máximo: fica segurado até release().
+     */
+    gate.hold = function (why) {
+        if (!gate.enabled) return false;
+        clearTimers();
+        gate.reason = why || '';
+        if (!held) {
+            held = gate.held = true;
+            note('hold', why);
+            fire('ram:ads-hold', why);
+        }
+        return true;
+    };
+
+    /**
+     * Libera os blocos de conteúdo (popup fechado sem navegação, sem anúncio, cooldown...).
+     */
+    gate.release = function (why) {
+        clearTimers();
+        if (!held) return false;
+        held = gate.held = false;
+        gate.reason = why || '';
+        if (why === 'timeout') gate.contentWon = true;
+        note('release', why);
+        flush();
+        var cbs = callbacks; callbacks = [];
+        for (var i = 0; i < cbs.length; i++) { try { cbs[i](gate.reason); } catch (e) {} }
+        fire('ram:ads-release', why);
+        return true;
+    };
+
+    /**
+     * A página vai navegar (redirect após o rewarded): mantém a trava para não
+     * comprar um bloco segundos antes de descarregar a página. Se a navegação não
+     * acontecer (download, tel:, bloqueio), solta depois de `ms`.
+     */
+    gate.leaving = function (ms) {
+        if (!held) return;
+        if (leaveTimer) clearTimeout(leaveTimer);
+        leaveTimer = setTimeout(function () { leaveTimer = null; gate.release('nav-timeout'); }, ms || 6000);
+    };
+
+    /** Para o carregador de anúncios do site: roda cb quando o conteúdo estiver liberado. */
+    gate.whenReleased = function (cb) {
+        if (typeof cb !== 'function') return;
+        if (!held) { try { cb(gate.reason); } catch (e) {} return; }
+        callbacks.push(cb);
+    };
+
+    /** Executa fn sem passar pela trava (usado pelo próprio slot rewarded). */
+    gate.passthrough = function (fn) {
+        bypass++;
+        try { return fn(); } finally { bypass--; }
+    };
+
+    /** Diagnóstico: ramAdGate.debug() no console, ou abra a página com ?ram_debug=1 */
+    gate.debug = function () {
+        return {
+            mode: gate.mode, enabled: gate.enabled, held: held, reason: gate.reason,
+            contentWon: gate.contentWon, wrapped: gate.wrapped, sra: sraOn(),
+            displayAdiados: qDisplay.length, refreshAdiados: qRefresh.length, log: log.slice()
+        };
+    };
+
+    function onCooldown() {
+        try {
+            return CFG.cdMs > 0 && !!CFG.cdKey &&
+                (Date.now() - parseInt(w.localStorage.getItem(CFG.cdKey) || '0', 10)) < CFG.cdMs;
+        } catch (e) { return false; }
+    }
+
+    // O popup vai cobrir a página logo no carregamento?
+    function coversPageAtLoad() {
+        if (CFG.mode === 'reward_auto') {
+            if (onCooldown()) return false;
+            if (CFG.urlContains.length) {
+                var hit = false;
+                for (var i = 0; i < CFG.urlContains.length; i++) {
+                    if (w.location.href.indexOf(CFG.urlContains[i]) !== -1) { hit = true; break; }
+                }
+                if (!hit) return false;
+            }
+            return true;
+        }
+        if (CFG.mode === 'quiz_modal') {
+            var progress = false;
+            try { progress = new URLSearchParams(w.location.search).has('ram_q'); } catch (e) {}
+            try { progress = progress || !!w.sessionStorage.getItem(CFG.navKey); } catch (e) {}
+            return !(onCooldown() && !progress);
+        }
+        return false; // reward_click e quiz_inline só cobrem a página depois de um clique
+    }
+
+    w.ramAdGate = gate;
+    if (!gate.enabled) { note('protecao desligada'); return; }
+
+    w.googletag = w.googletag || { cmd: [] };
+    w.googletag.cmd = w.googletag.cmd || [];
+    // Entra na FRENTE da fila enquanto o GPT ainda não carregou: assim a trava é instalada antes
+    // do código de anúncios do site, não importa a ordem dos <script> na página. Se o GPT já
+    // carregou, cmd.push executa na hora.
+    if (isArray(w.googletag.cmd)) w.googletag.cmd.unshift(install);
+    else w.googletag.cmd.push(install);
+
+    if (coversPageAtLoad()) {
+        held = gate.held = true;
+        gate.reason = 'load';
+        note('hold', 'load');
+        fire('ram:ads-hold', 'load');
+        var onDom = function () {
+            domReady = true;
+            armTimeout();
+            // GPT nunca carregou (bloqueador, rede): não há anúncio do GPT pra proteger. Solta para
+            // quem usa a integração nativa (whenReleased) não ficar esperando pra sempre.
+            capTimer = setTimeout(function () {
+                capTimer = null;
+                if (held && gate.reason === 'load' && !gptReady) gate.release('gpt-ausente');
+            }, 15000);
+        };
+        if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', onDom);
+        else onDom();
+    }
+
+    // Página restaurada pelo botão Voltar (bfcache) com a trava ainda ativa e sem popup: solta.
+    w.addEventListener('pageshow', function (e) {
+        if (e.persisted && held && !overlayVisible()) gate.release('bfcache');
+    });
+})(window, document);
+</script>
+        
+<!-- Google Tag Manager for WordPress by gtm4wp.com -->
+<script data-cfasync="false" data-pagespeed-no-defer>
+	var gtm4wp_datalayer_name = "dataLayer";
+	var dataLayer = dataLayer || [];
+	(function(){dataLayer.push(arguments);})('set', 'developer_id.dNGJiYT', true);
+</script>
+<!-- End Google Tag Manager for WordPress by gtm4wp.com -->
+<script src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"></script>
+<script>window.wadsConfig = {
+  network: "23340104016",
+  domain: "de.credityup.com"
+};</script>
+<script src="https://api.winup.network/api/v1/public/kvp/wads.js?v=1"></script>
+<winupads tag="interstitial"></winupads>
+<link rel='dns-prefetch' href='//fonts.googleapis.com' />
+<link rel="alternate" type="application/rss+xml" title="Feed para De credityup &raquo;" href="https://de.credityup.com/feed/" />
+<link rel="alternate" type="application/rss+xml" title="Feed de comentários para De credityup &raquo;" href="https://de.credityup.com/comments/feed/" />
+<link rel="alternate" type="application/rss+xml" title="Feed de comentários para De credityup &raquo; Apps für lockere Begegnungen: Ihren Weg zur unkomplizierten Verabredung finden" href="https://de.credityup.com/apps-leichte-dates-unkomplizierte-treffen-lp-02-art01/feed/" />
+<link rel="alternate" title="oEmbed (JSON)" type="application/json+oembed" href="https://de.credityup.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fde.credityup.com%2Fapps-leichte-dates-unkomplizierte-treffen-lp-02-art01%2F" />
+<link rel="alternate" title="oEmbed (XML)" type="text/xml+oembed" href="https://de.credityup.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fde.credityup.com%2Fapps-leichte-dates-unkomplizierte-treffen-lp-02-art01%2F&#038;format=xml" />
+<style id="wp-img-auto-sizes-contain-inline-css">
+img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
+/*# sourceURL=wp-img-auto-sizes-contain-inline-css */
+</style>
+<script>WebFontConfig={google:{families:["Roboto:300,400,500,700:latin,latin-ext","Roboto Slab:400,700:latin,latin-ext\u0026display=swap"]}};if ( typeof WebFont === "object" && typeof WebFont.load === "function" ) { WebFont.load( WebFontConfig ); }</script><script data-optimized="1" src="https://de.credityup.com/wp-content/plugins/litespeed-cache/assets/js/webfontloader.min.js"></script>
+<style id="wp-emoji-styles-inline-css">
+
+	img.wp-smiley, img.emoji {
+		display: inline !important;
+		border: none !important;
+		box-shadow: none !important;
+		height: 1em !important;
+		width: 1em !important;
+		margin: 0 0.07em !important;
+		vertical-align: -0.1em !important;
+		background: none !important;
+		padding: 0 !important;
+	}
+/*# sourceURL=wp-emoji-styles-inline-css */
+</style>
+<style id="wp-block-library-inline-css">
+:root{--wp-block-synced-color:#7a00df;--wp-block-synced-color--rgb:122,0,223;--wp-bound-block-color:var(--wp-block-synced-color);--wp-editor-canvas-background:#ddd;--wp-admin-theme-color:#007cba;--wp-admin-theme-color--rgb:0,124,186;--wp-admin-theme-color-darker-10:#006ba1;--wp-admin-theme-color-darker-10--rgb:0,107,160.5;--wp-admin-theme-color-darker-20:#005a87;--wp-admin-theme-color-darker-20--rgb:0,90,135;--wp-admin-border-width-focus:2px}@media (min-resolution:192dpi){:root{--wp-admin-border-width-focus:1.5px}}.wp-element-button{cursor:pointer}:root .has-very-light-gray-background-color{background-color:#eee}:root .has-very-dark-gray-background-color{background-color:#313131}:root .has-very-light-gray-color{color:#eee}:root .has-very-dark-gray-color{color:#313131}:root .has-vivid-green-cyan-to-vivid-cyan-blue-gradient-background{background:linear-gradient(135deg,#00d084,#0693e3)}:root .has-purple-crush-gradient-background{background:linear-gradient(135deg,#34e2e4,#4721fb 50%,#ab1dfe)}:root .has-hazy-dawn-gradient-background{background:linear-gradient(135deg,#faaca8,#dad0ec)}:root .has-subdued-olive-gradient-background{background:linear-gradient(135deg,#fafae1,#67a671)}:root .has-atomic-cream-gradient-background{background:linear-gradient(135deg,#fdd79a,#004a59)}:root .has-nightshade-gradient-background{background:linear-gradient(135deg,#330968,#31cdcf)}:root .has-midnight-gradient-background{background:linear-gradient(135deg,#020381,#2874fc)}:root{--wp--preset--font-size--normal:16px;--wp--preset--font-size--huge:42px}.has-regular-font-size{font-size:1em}.has-larger-font-size{font-size:2.625em}.has-normal-font-size{font-size:var(--wp--preset--font-size--normal)}.has-huge-font-size{font-size:var(--wp--preset--font-size--huge)}:root .has-text-align-center{text-align:center}:root .has-text-align-left{text-align:left}:root .has-text-align-right{text-align:right}.has-fit-text{white-space:nowrap!important}#end-resizable-editor-section{display:none}.aligncenter{clear:both}.items-justified-left{justify-content:flex-start}.items-justified-center{justify-content:center}.items-justified-right{justify-content:flex-end}.items-justified-space-between{justify-content:space-between}.screen-reader-text{word-wrap:normal!important;border:0;clip-path:inset(50%);height:1px;margin:-1px;overflow:hidden;padding:0;position:absolute;width:1px;word-break:normal!important}.screen-reader-text:focus{background-color:#ddd;clip-path:none;color:#444;display:block;font-size:1em;height:auto;left:5px;line-height:normal;padding:15px 23px 14px;text-decoration:none;top:5px;width:auto;z-index:100000}html :where(.has-border-color){border-style:solid}html :where([style^=border-color],[style*=";border-color"],[style*="; border-color"]){border-style:solid}html :where([style^=border-top-color],[style*=";border-top-color"],[style*="; border-top-color"]){border-top-style:solid}html :where([style^=border-right-color],[style*=";border-right-color"],[style*="; border-right-color"]){border-right-style:solid}html :where([style^=border-bottom-color],[style*=";border-bottom-color"],[style*="; border-bottom-color"]){border-bottom-style:solid}html :where([style^=border-left-color],[style*=";border-left-color"],[style*="; border-left-color"]){border-left-style:solid}html :where([style^=border-width],[style*=";border-width"],[style*="; border-width"]){border-style:solid}html :where([style^=border-top-width],[style*=";border-top-width"],[style*="; border-top-width"]){border-top-style:solid}html :where([style^=border-right-width],[style*=";border-right-width"],[style*="; border-right-width"]){border-right-style:solid}html :where([style^=border-bottom-width],[style*=";border-bottom-width"],[style*="; border-bottom-width"]){border-bottom-style:solid}html :where([style^=border-left-width],[style*=";border-left-width"],[style*="; border-left-width"]){border-left-style:solid}html :where(img[class*=wp-image-]){height:auto;max-width:100%}:where(figure){margin:0 0 1em}html :where(.is-position-sticky){--wp-admin--admin-bar--position-offset:var(--wp-admin--admin-bar--height,0px)}@media screen and (max-width:600px){html :where(.is-position-sticky){--wp-admin--admin-bar--position-offset:0px}}
+
+/*# sourceURL=/wp-includes/css/dist/block-library/common.min.css */
+</style>
+<style id="wp-block-archives-inline-css">
+.wp-block-archives{box-sizing:border-box}.wp-block-archives-dropdown label{display:block}
+/*# sourceURL=https://de.credityup.com/wp-includes/blocks/archives/style.min.css */
+</style>
+<style id="wp-block-categories-inline-css">
+.wp-block-categories{box-sizing:border-box}.wp-block-categories.alignleft{margin-right:2em}.wp-block-categories.alignright{margin-left:2em}.wp-block-categories.wp-block-categories-dropdown.aligncenter{text-align:center}.wp-block-categories .wp-block-categories__label:not(.screen-reader-text){display:block;width:100%}
+/*# sourceURL=https://de.credityup.com/wp-includes/blocks/categories/style.min.css */
+</style>
+<style id="wp-block-heading-inline-css">
+h1:where(.wp-block-heading).has-background,h2:where(.wp-block-heading).has-background,h3:where(.wp-block-heading).has-background,h4:where(.wp-block-heading).has-background,h5:where(.wp-block-heading).has-background,h6:where(.wp-block-heading).has-background{padding:1.25em 2.375em}h1.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h1.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]),h2.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h2.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]),h3.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h3.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]),h4.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h4.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]),h5.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h5.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]),h6.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h6.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]){rotate:180deg}
+/*# sourceURL=https://de.credityup.com/wp-includes/blocks/heading/style.min.css */
+</style>
+<style id="wp-block-group-inline-css">
+.wp-block-group{box-sizing:border-box}:where(.wp-block-group.wp-block-group-is-layout-constrained){position:relative}
+/*# sourceURL=https://de.credityup.com/wp-includes/blocks/group/style.min.css */
+</style>
+
+<style id="classic-theme-styles-inline-css">
+/*! This file is auto-generated */
+.wp-block-button__link{color:#fff;background-color:#32373c;border-radius:9999px;box-shadow:none;text-decoration:none;padding:calc(.667em + 2px) calc(1.333em + 2px);font-size:1.125em}.wp-block-file__button{background:#32373c;color:#fff;text-decoration:none}
+/*# sourceURL=/wp-includes/css/classic-themes.min.css */
+</style>
+
+<style id="global-styles-inline-css">
+:root{--wp--preset--aspect-ratio--square: 1;--wp--preset--aspect-ratio--4-3: 4/3;--wp--preset--aspect-ratio--3-4: 3/4;--wp--preset--aspect-ratio--3-2: 3/2;--wp--preset--aspect-ratio--2-3: 2/3;--wp--preset--aspect-ratio--16-9: 16/9;--wp--preset--aspect-ratio--9-16: 9/16;--wp--preset--color--black: #000000;--wp--preset--color--cyan-bluish-gray: #abb8c3;--wp--preset--color--white: #ffffff;--wp--preset--color--pale-pink: #f78da7;--wp--preset--color--vivid-red: #cf2e2e;--wp--preset--color--luminous-vivid-orange: #ff6900;--wp--preset--color--luminous-vivid-amber: #fcb900;--wp--preset--color--light-green-cyan: #7bdcb5;--wp--preset--color--vivid-green-cyan: #00d084;--wp--preset--color--pale-cyan-blue: #8ed1fc;--wp--preset--color--vivid-cyan-blue: #0693e3;--wp--preset--color--vivid-purple: #9b51e0;--wp--preset--color--accent: #e91e63;--wp--preset--color--secondary: #2d3359;--wp--preset--color--background-color: #E5E5E5;--wp--preset--color--header-gradient: #a81d84;--wp--preset--color--body-color: #999999;--wp--preset--color--header-overlay-color: rgba(0,0,0,0.5);--wp--preset--color--header-text-color: #fffffe;--wp--preset--color--navbar-background: #fffffd;--wp--preset--color--navbar-text-color: #555555;--wp--preset--color--navbar-text-color-hover: #e91e63;--wp--preset--color--navbar-transparent-text-color: #fffffc;--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple: linear-gradient(135deg,rgb(6,147,227) 0%,rgb(155,81,224) 100%);--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan: linear-gradient(135deg,rgb(122,220,180) 0%,rgb(0,208,130) 100%);--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange: linear-gradient(135deg,rgb(252,185,0) 0%,rgb(255,105,0) 100%);--wp--preset--gradient--luminous-vivid-orange-to-vivid-red: linear-gradient(135deg,rgb(255,105,0) 0%,rgb(207,46,46) 100%);--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray: linear-gradient(135deg,rgb(238,238,238) 0%,rgb(169,184,195) 100%);--wp--preset--gradient--cool-to-warm-spectrum: linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%);--wp--preset--gradient--blush-light-purple: linear-gradient(135deg,rgb(255,206,236) 0%,rgb(152,150,240) 100%);--wp--preset--gradient--blush-bordeaux: linear-gradient(135deg,rgb(254,205,165) 0%,rgb(254,45,45) 50%,rgb(107,0,62) 100%);--wp--preset--gradient--luminous-dusk: linear-gradient(135deg,rgb(255,203,112) 0%,rgb(199,81,192) 50%,rgb(65,88,208) 100%);--wp--preset--gradient--pale-ocean: linear-gradient(135deg,rgb(255,245,203) 0%,rgb(182,227,212) 50%,rgb(51,167,181) 100%);--wp--preset--gradient--electric-grass: linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%);--wp--preset--gradient--midnight: linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%);--wp--preset--font-size--small: 13px;--wp--preset--font-size--medium: 20px;--wp--preset--font-size--large: 36px;--wp--preset--font-size--x-large: 42px;--wp--preset--spacing--20: 0.44rem;--wp--preset--spacing--30: 0.67rem;--wp--preset--spacing--40: 1rem;--wp--preset--spacing--50: 1.5rem;--wp--preset--spacing--60: 2.25rem;--wp--preset--spacing--70: 3.38rem;--wp--preset--spacing--80: 5.06rem;--wp--preset--shadow--natural: 6px 6px 9px rgba(0, 0, 0, 0.2);--wp--preset--shadow--deep: 12px 12px 50px rgba(0, 0, 0, 0.4);--wp--preset--shadow--sharp: 6px 6px 0px rgba(0, 0, 0, 0.2);--wp--preset--shadow--outlined: 6px 6px 0px -3px rgb(255, 255, 255), 6px 6px rgb(0, 0, 0);--wp--preset--shadow--crisp: 6px 6px 0px rgb(0, 0, 0);}.wp-block-button{--wp--preset--dimension--25: 25%;--wp--preset--dimension--50: 50%;--wp--preset--dimension--75: 75%;--wp--preset--dimension--100: 100%;}:where(body) { margin: 0; }:where(.is-layout-flex){gap: 0.5em;}:where(.is-layout-grid){gap: 0.5em;}body .is-layout-flex{display: flex;}.is-layout-flex{flex-wrap: wrap;align-items: center;}.is-layout-flex > :is(*, div){margin: 0;}body .is-layout-grid{display: grid;}.is-layout-grid > :is(*, div){margin: 0;}body{padding-top: 0px;padding-right: 0px;padding-bottom: 0px;padding-left: 0px;}:root :where(.wp-element-button, .wp-block-button__link){background-color: #32373c;border-width: 0;color: #fff;font-family: inherit;font-size: inherit;font-style: inherit;font-weight: inherit;letter-spacing: inherit;line-height: inherit;padding-top: calc(0.667em + 2px);padding-right: calc(1.333em + 2px);padding-bottom: calc(0.667em + 2px);padding-left: calc(1.333em + 2px);text-decoration: none;text-transform: inherit;}.has-black-color{color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-color{color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-color{color: var(--wp--preset--color--white) !important;}.has-pale-pink-color{color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-color{color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-color{color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-color{color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-color{color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-color{color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-color{color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-color{color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-color{color: var(--wp--preset--color--vivid-purple) !important;}.has-accent-color{color: var(--wp--preset--color--accent) !important;}.has-secondary-color{color: var(--wp--preset--color--secondary) !important;}.has-background-color-color{color: var(--wp--preset--color--background-color) !important;}.has-header-gradient-color{color: var(--wp--preset--color--header-gradient) !important;}.has-body-color-color{color: var(--wp--preset--color--body-color) !important;}.has-header-overlay-color-color{color: var(--wp--preset--color--header-overlay-color) !important;}.has-header-text-color-color{color: var(--wp--preset--color--header-text-color) !important;}.has-navbar-background-color{color: var(--wp--preset--color--navbar-background) !important;}.has-navbar-text-color-color{color: var(--wp--preset--color--navbar-text-color) !important;}.has-navbar-text-color-hover-color{color: var(--wp--preset--color--navbar-text-color-hover) !important;}.has-navbar-transparent-text-color-color{color: var(--wp--preset--color--navbar-transparent-text-color) !important;}.has-black-background-color{background-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-background-color{background-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-background-color{background-color: var(--wp--preset--color--white) !important;}.has-pale-pink-background-color{background-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-background-color{background-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-background-color{background-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-background-color{background-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-background-color{background-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-background-color{background-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-background-color{background-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-background-color{background-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-background-color{background-color: var(--wp--preset--color--vivid-purple) !important;}.has-accent-background-color{background-color: var(--wp--preset--color--accent) !important;}.has-secondary-background-color{background-color: var(--wp--preset--color--secondary) !important;}.has-background-color-background-color{background-color: var(--wp--preset--color--background-color) !important;}.has-header-gradient-background-color{background-color: var(--wp--preset--color--header-gradient) !important;}.has-body-color-background-color{background-color: var(--wp--preset--color--body-color) !important;}.has-header-overlay-color-background-color{background-color: var(--wp--preset--color--header-overlay-color) !important;}.has-header-text-color-background-color{background-color: var(--wp--preset--color--header-text-color) !important;}.has-navbar-background-background-color{background-color: var(--wp--preset--color--navbar-background) !important;}.has-navbar-text-color-background-color{background-color: var(--wp--preset--color--navbar-text-color) !important;}.has-navbar-text-color-hover-background-color{background-color: var(--wp--preset--color--navbar-text-color-hover) !important;}.has-navbar-transparent-text-color-background-color{background-color: var(--wp--preset--color--navbar-transparent-text-color) !important;}.has-black-border-color{border-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-border-color{border-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-border-color{border-color: var(--wp--preset--color--white) !important;}.has-pale-pink-border-color{border-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-border-color{border-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-border-color{border-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-border-color{border-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-border-color{border-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-border-color{border-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-border-color{border-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-border-color{border-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-border-color{border-color: var(--wp--preset--color--vivid-purple) !important;}.has-accent-border-color{border-color: var(--wp--preset--color--accent) !important;}.has-secondary-border-color{border-color: var(--wp--preset--color--secondary) !important;}.has-background-color-border-color{border-color: var(--wp--preset--color--background-color) !important;}.has-header-gradient-border-color{border-color: var(--wp--preset--color--header-gradient) !important;}.has-body-color-border-color{border-color: var(--wp--preset--color--body-color) !important;}.has-header-overlay-color-border-color{border-color: var(--wp--preset--color--header-overlay-color) !important;}.has-header-text-color-border-color{border-color: var(--wp--preset--color--header-text-color) !important;}.has-navbar-background-border-color{border-color: var(--wp--preset--color--navbar-background) !important;}.has-navbar-text-color-border-color{border-color: var(--wp--preset--color--navbar-text-color) !important;}.has-navbar-text-color-hover-border-color{border-color: var(--wp--preset--color--navbar-text-color-hover) !important;}.has-navbar-transparent-text-color-border-color{border-color: var(--wp--preset--color--navbar-transparent-text-color) !important;}.has-vivid-cyan-blue-to-vivid-purple-gradient-background{background: var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple) !important;}.has-light-green-cyan-to-vivid-green-cyan-gradient-background{background: var(--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan) !important;}.has-luminous-vivid-amber-to-luminous-vivid-orange-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange) !important;}.has-luminous-vivid-orange-to-vivid-red-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-orange-to-vivid-red) !important;}.has-very-light-gray-to-cyan-bluish-gray-gradient-background{background: var(--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray) !important;}.has-cool-to-warm-spectrum-gradient-background{background: var(--wp--preset--gradient--cool-to-warm-spectrum) !important;}.has-blush-light-purple-gradient-background{background: var(--wp--preset--gradient--blush-light-purple) !important;}.has-blush-bordeaux-gradient-background{background: var(--wp--preset--gradient--blush-bordeaux) !important;}.has-luminous-dusk-gradient-background{background: var(--wp--preset--gradient--luminous-dusk) !important;}.has-pale-ocean-gradient-background{background: var(--wp--preset--gradient--pale-ocean) !important;}.has-electric-grass-gradient-background{background: var(--wp--preset--gradient--electric-grass) !important;}.has-midnight-gradient-background{background: var(--wp--preset--gradient--midnight) !important;}.has-small-font-size{font-size: var(--wp--preset--font-size--small) !important;}.has-medium-font-size{font-size: var(--wp--preset--font-size--medium) !important;}.has-large-font-size{font-size: var(--wp--preset--font-size--large) !important;}.has-x-large-font-size{font-size: var(--wp--preset--font-size--x-large) !important;}
+/*# sourceURL=global-styles-inline-css */
+</style>
+
+<link rel='stylesheet' id='bootstrap-css' href='https://de.credityup.com/wp-content/themes/hestia-pro/assets/bootstrap/css/bootstrap.min.css?ver=1.0.2' media='all' />
+<link rel='stylesheet' id='hestia-font-sizes-css' href='https://de.credityup.com/wp-content/themes/hestia-pro/assets/css/font-sizes.min.css?ver=3.0.23' media='all' />
+<link rel='stylesheet' id='hestia_style-css' href='https://de.credityup.com/wp-content/themes/hestia-pro/style.min.css?ver=3.0.23' media='all' />
+<style id="hestia_style-inline-css">
+.hestia-top-bar, .hestia-top-bar .widget.widget_shopping_cart .cart_list {
+			background-color: #363537
+		}
+		.hestia-top-bar .widget .label-floating input[type=search]:-webkit-autofill {
+			-webkit-box-shadow: inset 0 0 0px 9999px #363537
+		}.hestia-top-bar, .hestia-top-bar .widget .label-floating input[type=search], .hestia-top-bar .widget.widget_search form.form-group:before, .hestia-top-bar .widget.widget_product_search form.form-group:before, .hestia-top-bar .widget.widget_shopping_cart:before {
+			color: #ffffff
+		} 
+		.hestia-top-bar .widget .label-floating input[type=search]{
+			-webkit-text-fill-color:#ffffff !important 
+		}
+		.hestia-top-bar div.widget.widget_shopping_cart:before, .hestia-top-bar .widget.widget_product_search form.form-group:before, .hestia-top-bar .widget.widget_search form.form-group:before{
+			background-color: #ffffff
+		}.hestia-top-bar a, .hestia-top-bar .top-bar-nav li a {
+			color: #ffffff
+		}
+		.hestia-top-bar ul li a[href*="mailto:"]:before, .hestia-top-bar ul li a[href*="tel:"]:before{
+			background-color: #ffffff
+		}
+		.hestia-top-bar a:hover, .hestia-top-bar .top-bar-nav li a:hover {
+			color: #eeeeee
+		}
+		.hestia-top-bar ul li:hover a[href*="mailto:"]:before, .hestia-top-bar ul li:hover a[href*="tel:"]:before{
+			background-color: #eeeeee
+		}
+		
+@media (min-width: 769px){
+			.page-header.header-small .hestia-title,
+			.page-header.header-small .title,
+			h1.hestia-title.title-in-content,
+			.main article.section .has-title-font-size {
+				font-size: 42px;
+			}}
+
+				@media (min-width: 992px){
+					.blog-sidebar-wrapper:not(.no-variable-width){
+						width: 25%;
+						display: inline-block;
+					}
+					.single-post-container,
+					.blog-posts-wrap, 
+					.archive-post-wrap {
+						width: 66.66666667%;
+					}
+					.page-content-wrap{
+						width: 75%;
+					}
+					.blog-sidebar-wrapper:not(.no-variable-width){
+						width: 25%;
+					}
+				}
+
+		a,
+		.navbar .dropdown-menu li:hover > a,
+		.navbar .dropdown-menu li:focus > a,
+		.navbar .dropdown-menu li:active > a,
+		.navbar .navbar-nav > li .dropdown-menu li:hover > a,
+		body:not(.home) .navbar-default .navbar-nav > .active:not(.btn) > a,
+		body:not(.home) .navbar-default .navbar-nav > .active:not(.btn) > a:hover,
+		body:not(.home) .navbar-default .navbar-nav > .active:not(.btn) > a:focus,
+		a:hover,
+		.card-blog a.moretag:hover,
+		.card-blog a.more-link:hover,
+		.widget a:hover,
+		.has-text-color.has-accent-color,
+		p.has-text-color a {
+		    color:#e91e63;
+		}
+		
+		.svg-text-color{
+			fill:#e91e63;
+		}
+		
+		.pagination span.current, .pagination span.current:focus, .pagination span.current:hover {
+			border-color:#e91e63
+		}
+		
+		button,
+		button:hover,
+		.woocommerce .track_order button[type="submit"],
+		.woocommerce .track_order button[type="submit"]:hover,
+		div.wpforms-container .wpforms-form button[type=submit].wpforms-submit,
+		div.wpforms-container .wpforms-form button[type=submit].wpforms-submit:hover,
+		input[type="button"],
+		input[type="button"]:hover,
+		input[type="submit"],
+		input[type="submit"]:hover,
+		input#searchsubmit,
+		.pagination span.current,
+		.pagination span.current:focus,
+		.pagination span.current:hover,
+		.btn.btn-primary,
+		.btn.btn-primary:link,
+		.btn.btn-primary:hover,
+		.btn.btn-primary:focus,
+		.btn.btn-primary:active,
+		.btn.btn-primary.active,
+		.btn.btn-primary.active:focus,
+		.btn.btn-primary.active:hover,
+		.btn.btn-primary:active:hover,
+		.btn.btn-primary:active:focus,
+		.btn.btn-primary:active:hover,
+		.hestia-sidebar-open.btn.btn-rose,
+		.hestia-sidebar-close.btn.btn-rose,
+		.hestia-sidebar-open.btn.btn-rose:hover,
+		.hestia-sidebar-close.btn.btn-rose:hover,
+		.hestia-sidebar-open.btn.btn-rose:focus,
+		.hestia-sidebar-close.btn.btn-rose:focus,
+		.label.label-primary,
+		.hestia-work .portfolio-item:nth-child(6n+1) .label,
+		.nav-cart .nav-cart-content .widget .buttons .button,
+		.has-accent-background-color[class*="has-background"] {
+		    background-color: #e91e63;
+		}
+		
+		@media (max-width: 768px) {
+	
+			.navbar-default .navbar-nav>li>a:hover,
+			.navbar-default .navbar-nav>li>a:focus,
+			.navbar .navbar-nav .dropdown .dropdown-menu li a:hover,
+			.navbar .navbar-nav .dropdown .dropdown-menu li a:focus,
+			.navbar button.navbar-toggle:hover,
+			.navbar .navbar-nav li:hover > a i {
+			    color: #e91e63;
+			}
+		}
+		
+		body:not(.woocommerce-page) button:not([class^="fl-"]):not(.hestia-scroll-to-top):not(.navbar-toggle):not(.close),
+		body:not(.woocommerce-page) .button:not([class^="fl-"]):not(hestia-scroll-to-top):not(.navbar-toggle):not(.add_to_cart_button):not(.product_type_grouped):not(.product_type_external),
+		div.wpforms-container .wpforms-form button[type=submit].wpforms-submit,
+		input[type="submit"],
+		input[type="button"],
+		.btn.btn-primary,
+		.widget_product_search button[type="submit"],
+		.hestia-sidebar-open.btn.btn-rose,
+		.hestia-sidebar-close.btn.btn-rose,
+		.everest-forms button[type=submit].everest-forms-submit-button {
+		    -webkit-box-shadow: 0 2px 2px 0 rgba(233,30,99,0.14),0 3px 1px -2px rgba(233,30,99,0.2),0 1px 5px 0 rgba(233,30,99,0.12);
+		    box-shadow: 0 2px 2px 0 rgba(233,30,99,0.14),0 3px 1px -2px rgba(233,30,99,0.2),0 1px 5px 0 rgba(233,30,99,0.12);
+		}
+		
+		.card .header-primary, .card .content-primary,
+		.everest-forms button[type=submit].everest-forms-submit-button {
+		    background: #e91e63;
+		}
+		
+		body:not(.woocommerce-page) .button:not([class^="fl-"]):not(.hestia-scroll-to-top):not(.navbar-toggle):not(.add_to_cart_button):hover,
+		body:not(.woocommerce-page) button:not([class^="fl-"]):not(.hestia-scroll-to-top):not(.navbar-toggle):not(.close):hover,
+		div.wpforms-container .wpforms-form button[type=submit].wpforms-submit:hover,
+		input[type="submit"]:hover,
+		input[type="button"]:hover,
+		input#searchsubmit:hover,
+		.widget_product_search button[type="submit"]:hover,
+		.pagination span.current,
+		.btn.btn-primary:hover,
+		.btn.btn-primary:focus,
+		.btn.btn-primary:active,
+		.btn.btn-primary.active,
+		.btn.btn-primary:active:focus,
+		.btn.btn-primary:active:hover,
+		.hestia-sidebar-open.btn.btn-rose:hover,
+		.hestia-sidebar-close.btn.btn-rose:hover,
+		.pagination span.current:hover,
+		.everest-forms button[type=submit].everest-forms-submit-button:hover,
+ 		.everest-forms button[type=submit].everest-forms-submit-button:focus,
+ 		.everest-forms button[type=submit].everest-forms-submit-button:active {
+			-webkit-box-shadow: 0 14px 26px -12px rgba(233,30,99,0.42),0 4px 23px 0 rgba(0,0,0,0.12),0 8px 10px -5px rgba(233,30,99,0.2);
+		    box-shadow: 0 14px 26px -12px rgba(233,30,99,0.42),0 4px 23px 0 rgba(0,0,0,0.12),0 8px 10px -5px rgba(233,30,99,0.2);
+			color: #fff;
+		}
+		
+		.form-group.is-focused .form-control {
+			background-image: -webkit-gradient(linear,left top, left bottom,from(#e91e63),to(#e91e63)),-webkit-gradient(linear,left top, left bottom,from(#d2d2d2),to(#d2d2d2));
+			background-image: -webkit-linear-gradient(linear,left top, left bottom,from(#e91e63),to(#e91e63)),-webkit-linear-gradient(linear,left top, left bottom,from(#d2d2d2),to(#d2d2d2));
+			background-image: linear-gradient(linear,left top, left bottom,from(#e91e63),to(#e91e63)),linear-gradient(linear,left top, left bottom,from(#d2d2d2),to(#d2d2d2));
+		}
+		
+		.navbar:not(.navbar-transparent) li:not(.btn):hover > a,
+		.navbar li.on-section:not(.btn) > a,
+		.navbar.full-screen-menu.navbar-transparent li:not(.btn):hover > a,
+		.navbar.full-screen-menu .navbar-toggle:hover,
+		.navbar:not(.navbar-transparent) .nav-cart:hover,
+		.navbar:not(.navbar-transparent) .hestia-toggle-search:hover {
+				color:#e91e63
+		}
+		
+			.header-filter-gradient {
+				background: linear-gradient(45deg, rgba(168,29,132,1) 0%, rgb(234,57,111) 100%);
+			}
+			.has-text-color.has-header-gradient-color { color: #a81d84; }
+			.has-header-gradient-background-color[class*="has-background"] { background-color: #a81d84; }
+			
+		.has-text-color.has-background-color-color { color: #E5E5E5; }
+		.has-background-color-background-color[class*="has-background"] { background-color: #E5E5E5; }
+		
+
+			.title, .title a, 
+			.card-title, 
+			.card-title a,
+			.card-title a:hover,
+			.info-title,
+			.info-title a,
+			.footer-brand, 
+			.footer-brand a,
+			.media .media-heading, 
+			.media .media-heading a,
+			.hestia-info .info-title, 
+			.card-blog a.moretag,
+			.card-blog a.more-link,
+			.card .author a,
+			.hestia-about:not(.section-image) h1, .hestia-about:not(.section-image) h2, .hestia-about:not(.section-image) h3, .hestia-about:not(.section-image) h4, .hestia-about:not(.section-image) h5,
+			aside .widget h5,
+			aside .widget a,
+			.woocommerce ul.products[class*="columns-"] li.product-category h2,
+			.woocommerce #reviews #comments ol.commentlist li .comment-text p.meta .woocommerce-review__author,
+			.has-text-color.has-secondary-color {
+				color: #2d3359;
+			}
+			.has-secondary-background-color[class*="has-background"] {
+				background-color: #2d3359
+			}
+		.description, .card-description, .footer-big, .hestia-features .hestia-info p, .text-gray,
+		.hestia-about:not(.section-image) p, .hestia-about:not(.section-image) h6,
+		.has-text-color.has-body-color-color {
+			color: #999999;
+		}
+		.has-body-color-background-color[class*="has-background"] {
+			background-color: #999999
+		} 
+		.header-filter:before,
+		.has-header-overlay-color-background-color[class*="has-background"] {
+			background-color: rgba(0,0,0,0.5);
+		}
+		.has-text-color.has-header-overlay-color-color {
+			color: rgba(0,0,0,0.5);
+		} 
+		.page-header, .page-header .hestia-title, .page-header .sub-title,
+		.has-text-color.has-header-text-color-color {
+			color: #fff;
+		}
+		.has-header-text-color-background-color[class*="has-background"] {
+			background-color: #fff;
+		}
+			@media( max-width: 768px ) {
+				/* On mobile background-color */
+				.header > .navbar,
+				.navbar.navbar-fixed-top .navbar-collapse {
+					background-color: #fff;
+				}
+			}
+			.navbar:not(.navbar-transparent),
+			.navbar .dropdown-menu,
+			.nav-cart .nav-cart-content .widget,
+			.has-navbar-background-background-color[class*="has-background"] {
+				background-color: #fff;
+			}
+			
+			@media ( min-width: 769px ) {
+				.navbar.full-screen-menu .nav.navbar-nav { background-color: rgba(255,255,255,0.9) }
+			}
+			.has-navbar-background-color[class*="has-background"] {
+				color: #fff;
+			}
+		@media( min-width: 769px ) {
+			.navbar.navbar-transparent .navbar-brand,
+			.navbar.navbar-transparent .navbar-nav > li:not(.btn) > a,
+			.navbar.navbar-transparent .navbar-nav > .active > a,
+			.navbar.navbar-transparent.full-screen-menu .navbar-toggle,
+			.navbar.navbar-transparent:not(.full-screen-menu) .nav-cart-icon, 
+			.navbar.navbar-transparent.full-screen-menu li.responsive-nav-cart > a.nav-cart-icon,
+			.navbar.navbar-transparent .hestia-toggle-search,
+			.navbar.navbar-transparent .header-widgets-wrapper ul li a[href*="mailto:"],
+			.navbar.navbar-transparent .header-widgets-wrapper ul li a[href*="tel:"]{
+				color: #fff;
+			}
+		}
+		.navbar.navbar-transparent .hestia-toggle-search svg{
+			fill: #fff;
+		}
+		.has-text-color.has-navbar-transparent-text-color-color {
+			color: #fff;
+		}
+		.has-navbar-transparent-text-color-background-color[class*="has-background"],
+		.navbar.navbar-transparent .header-widgets-wrapper ul li a[href*="mailto:"]:before,
+		.navbar.navbar-transparent .header-widgets-wrapper ul li a[href*="tel:"]:before{
+			background-color: #fff;
+		}
+		@media( min-width: 769px ) {
+			.menu-open .navbar.full-screen-menu.navbar-transparent .navbar-toggle,
+			.navbar:not(.navbar-transparent) .navbar-brand,
+			.navbar:not(.navbar-transparent) li:not(.btn) > a,
+			.navbar.navbar-transparent.full-screen-menu li:not(.btn):not(.nav-cart) > a,
+			.navbar.navbar-transparent .dropdown-menu li:not(.btn) > a,
+			.hestia-mm-heading, .hestia-mm-description, 
+			.navbar:not(.navbar-transparent) .navbar-nav > .active > a,
+			.navbar:not(.navbar-transparent).full-screen-menu .navbar-toggle,
+			.navbar .nav-cart-icon,  
+			.navbar:not(.navbar-transparent) .hestia-toggle-search,
+			.navbar.navbar-transparent .nav-cart .nav-cart-content .widget li a,
+			.navbar .navbar-nav>li .dropdown-menu li.active>a {
+				color: #555;
+			}
+		}
+		@media( max-width: 768px ) {
+			.navbar.navbar-default .navbar-brand,
+			.navbar.navbar-default .navbar-nav li:not(.btn).menu-item > a,
+			.navbar.navbar-default .navbar-nav .menu-item.active > a,
+			.navbar.navbar-default .navbar-toggle,
+			.navbar.navbar-default .navbar-toggle,
+			.navbar.navbar-default .responsive-nav-cart a,
+			.navbar.navbar-default .nav-cart .nav-cart-content a,
+			.navbar.navbar-default .hestia-toggle-search,
+			.hestia-mm-heading, .hestia-mm-description {
+				color: #555;
+			}
+			
+			.navbar .navbar-nav .dropdown:not(.btn) a .caret svg{
+				fill: #555;
+			}
+			
+			
+			.navbar .navbar-nav .dropdown:not(.btn) a .caret {
+				border-color: #555;
+			}
+		}
+		.has-text-color.has-navbar-text-color-color {
+			color: #555;
+		}
+		.has-navbar-text-color-background-color[class*="has-background"] {
+			background-color: #555;
+		}
+		.navbar:not(.navbar-transparent) .header-widgets-wrapper ul li a[href*="mailto:"]:before,
+		.navbar:not(.navbar-transparent) .header-widgets-wrapper ul li a[href*="tel:"]:before{
+			background-color:#555
+		}
+		.hestia-toggle-search svg{
+			fill: #555;
+		}
+		
+		.navbar.navbar-default:not(.navbar-transparent) li:not(.btn):hover > a,
+		.navbar.navbar-default.navbar-transparent .dropdown-menu:not(.btn) li:not(.btn):hover > a,
+		.navbar.navbar-default:not(.navbar-transparent) li:not(.btn):hover > a i,
+		.navbar.navbar-default:not(.navbar-transparent) .navbar-toggle:hover,
+		.navbar.navbar-default:not(.full-screen-menu) .nav-cart-icon .nav-cart-content a:hover, 
+		.navbar.navbar-default:not(.navbar-transparent) .hestia-toggle-search:hover,
+		.navbar.navbar-transparent .nav-cart .nav-cart-content .widget li:hover a,
+		.has-text-color.has-navbar-text-color-hover-color {
+			color: #e91e63;
+		}
+		.navbar.navbar-default li.on-section:not(.btn) > a {color: #e91e63!important}
+		@media( max-width: 768px ) {
+			.navbar.navbar-default.navbar-transparent li:not(.btn):hover > a,
+			.navbar.navbar-default.navbar-transparent li:not(.btn):hover > a i,
+			.navbar.navbar-default.navbar-transparent .navbar-toggle:hover,
+			.navbar.navbar-default .responsive-nav-cart a:hover
+			.navbar.navbar-default .navbar-toggle:hover {
+				color: #e91e63 !important;
+			}
+		}
+		.has-navbar-text-color-hover-background-color[class*="has-background"] {
+			background-color: #e91e63;
+		}
+		.navbar:not(.navbar-transparent) .header-widgets-wrapper ul li:hover a[href*="mailto:"]:before,
+		.navbar:not(.navbar-transparent) .header-widgets-wrapper ul li:hover a[href*="tel:"]:before{
+			background-color:#e91e63
+		}
+		.hestia-toggle-search:hover svg{
+			fill: #e91e63;
+		}
+		
+		.form-group.is-focused .form-control,
+		 div.wpforms-container .wpforms-form .form-group.is-focused .form-control,
+		 .nf-form-cont input:not([type=button]):focus,
+		 .nf-form-cont select:focus,
+		 .nf-form-cont textarea:focus {
+		 background-image: -webkit-gradient(linear,left top, left bottom,from(#e91e63),to(#e91e63)),-webkit-gradient(linear,left top, left bottom,from(#d2d2d2),to(#d2d2d2));
+		 background-image: -webkit-linear-gradient(linear,left top, left bottom,from(#e91e63),to(#e91e63)),-webkit-linear-gradient(linear,left top, left bottom,from(#d2d2d2),to(#d2d2d2));
+		 background-image: linear-gradient(linear,left top, left bottom,from(#e91e63),to(#e91e63)),linear-gradient(linear,left top, left bottom,from(#d2d2d2),to(#d2d2d2));
+		 }
+		
+		 .navbar.navbar-transparent.full-screen-menu .navbar-collapse .navbar-nav > li:not(.btn) > a:hover {
+		 color: #e91e63;
+		 }
+		 
+		 .hestia-ajax-loading{
+		 border-color: #e91e63;
+		 }
+.btn.btn-primary:not(.colored-button):not(.btn-left):not(.btn-right):not(.btn-just-icon):not(.menu-item), input[type="submit"]:not(.search-submit), body:not(.woocommerce-account) .woocommerce .button.woocommerce-Button, .woocommerce .product button.button, .woocommerce .product button.button.alt, .woocommerce .product #respond input#submit, .woocommerce-cart .blog-post .woocommerce .cart-collaterals .cart_totals .checkout-button, .woocommerce-checkout #payment #place_order, .woocommerce-account.woocommerce-page button.button, .woocommerce .track_order button[type="submit"], .nav-cart .nav-cart-content .widget .buttons .button, .woocommerce a.button.wc-backward, body.woocommerce .wccm-catalog-item a.button, body.woocommerce a.wccm-button.button, form.woocommerce-form-coupon button.button, div.wpforms-container .wpforms-form button[type=submit].wpforms-submit, div.woocommerce a.button.alt, div.woocommerce table.my_account_orders .button, .btn.colored-button, .btn.btn-left, .btn.btn-right, .btn:not(.colored-button):not(.btn-left):not(.btn-right):not(.btn-just-icon):not(.menu-item):not(.hestia-sidebar-open):not(.hestia-sidebar-close){ padding-top:15px;  padding-bottom:15px;  padding-left:33px;  padding-right:33px; }
+.btn.btn-primary:not(.colored-button):not(.btn-left):not(.btn-right):not(.btn-just-icon):not(.menu-item), input[type="submit"]:not(.search-submit), body:not(.woocommerce-account) .woocommerce .button.woocommerce-Button, .woocommerce .product button.button, .woocommerce .product button.button.alt, .woocommerce .product #respond input#submit, .woocommerce-cart .blog-post .woocommerce .cart-collaterals .cart_totals .checkout-button, .woocommerce-checkout #payment #place_order, .woocommerce-account.woocommerce-page button.button, .woocommerce .track_order button[type="submit"], .nav-cart .nav-cart-content .widget .buttons .button, .woocommerce a.button.wc-backward, body.woocommerce .wccm-catalog-item a.button, body.woocommerce a.wccm-button.button, form.woocommerce-form-coupon button.button, div.wpforms-container .wpforms-form button[type=submit].wpforms-submit, div.woocommerce a.button.alt, div.woocommerce table.my_account_orders .button, input[type="submit"].search-submit, .hestia-view-cart-wrapper .added_to_cart.wc-forward, .woocommerce-product-search button, .woocommerce-cart .actions .button, #secondary div[id^=woocommerce_price_filter] .button, .woocommerce div[id^=woocommerce_widget_cart].widget .buttons .button, .searchform input[type=submit], .searchform button, .search-form:not(.media-toolbar-primary) input[type=submit], .search-form:not(.media-toolbar-primary) button, .woocommerce-product-search input[type=submit], .btn.colored-button, .btn.btn-left, .btn.btn-right, .btn:not(.colored-button):not(.btn-left):not(.btn-right):not(.btn-just-icon):not(.menu-item):not(.hestia-sidebar-open):not(.hestia-sidebar-close){border-radius:3px;}
+
+		.btn:hover{
+			background-color: #858585;
+		}
+		
+
+		.aos-init[data-aos] {
+		  transition-duration: 1.25s;
+		  -webkit-transition-duration: 1.25s;
+		  -moz-transition-duration: 1.25s;
+		  transition-timing-function: ease-out;
+		  -webkit-transition-timing-function: ease-out;
+		  -moz-transition-timing-function: ease-out;
+		  will-change: transform, opacity;
+		}
+		.aos-init[data-aos].hestia-table-two {
+		  transition-duration: 1s;
+		  -webkit-transition-duration: 1s;
+		  -moz-transition-duration: 1s;
+		}
+		.aos-init[data-aos^=fade][data-aos^=fade] {
+		  opacity: 0;
+		  transition-property: opacity, transform;
+		}
+		.aos-init[data-aos^=fade][data-aos^=fade].aos-animate {
+		  opacity: 1;
+		  transform: translate3d(0, 0, 0);
+		}
+		.aos-init[data-aos=fade-up] {
+		  transform: translate3d(0, 35px, 0);
+		}
+		.aos-init[data-aos=fade-down] {
+		  transform: translate3d(0, -35px, 0);
+		}
+		.aos-init[data-aos=fade-right] {
+		  transform: translate3d(-35px, 0, 0);
+		}
+		.aos-init[data-aos=fade-left] {
+		  transform: translate3d(35px, 0, 0);
+		}
+		
+/*# sourceURL=hestia_style-inline-css */
+</style>
+
+<script id="jquery-core-js" src="https://de.credityup.com/wp-includes/js/jquery/jquery.min.js?ver=3.7.1"></script>
+<script id="jquery-migrate-js" src="https://de.credityup.com/wp-includes/js/jquery/jquery-migrate.min.js?ver=3.4.1"></script>
+<link rel="https://api.w.org/" href="https://de.credityup.com/wp-json/" /><link rel="alternate" title="JSON" type="application/json" href="https://de.credityup.com/wp-json/wp/v2/posts/105" /><link rel="EditURI" type="application/rsd+xml" title="RSD" href="https://de.credityup.com/xmlrpc.php?rsd" />
+<meta name="generator" content="WordPress 7.1.3" />
+<link rel="canonical" href="https://de.credityup.com/apps-leichte-dates-unkomplizierte-treffen-lp-02-art01/" />
+<link rel='shortlink' href='https://de.credityup.com/?p=105' />
+<!-- HFCM by 99 Robots - Snippet # 3: GA4 - DE (de.credityup.com) -->
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-32D020LG1Q"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-32D020LG1Q');
+</script>
+<!-- /end HFCM by 99 Robots -->
+<!-- HFCM by 99 Robots - Snippet # 4: Rewarded same-page fix (header) -->
+<script>
+(function(){
+  var MODE = 'reload'; // 'reload' = recarrega a mesma URL | 'stay' = só fecha o popup, sem recarregar
+  var P = JSON.parse;
+  JSON.parse = function(t, r){
+    var v = P.apply(this, arguments);
+    try {
+      if (Array.isArray(v)) v.forEach(function(b){
+        if (b && typeof b === 'object' && typeof b.redirect_url === 'string' && /viralnetwork\.com\.br/i.test(b.redirect_url)) {
+          var u = location.href.split('#')[0];
+          b.redirect_url = MODE === 'stay' ? u + '#ok' : u;
+          b.hash = '';
+        }
+      });
+    } catch(e){}
+    return v;
+  };
+})();
+</script>
+<!-- /end HFCM by 99 Robots -->
+<!-- HFCM by 99 Robots - Snippet # 5: CY modern loader -->
+<style id="cy-loader-css">
+#cy-loader{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;background:radial-gradient(circle at 50% 40%,rgba(255,255,255,.92),rgba(255,240,246,.96));backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:opacity .35s ease,visibility .35s ease}
+#cy-loader.cy-hide{opacity:0;visibility:hidden;pointer-events:none}
+#cy-loader .cy-hearts{position:relative;width:64px;height:64px}
+#cy-loader .cy-hearts span{position:absolute;inset:0;margin:auto;width:26px;height:26px;background:#e62a7a;transform:rotate(45deg);animation:cyb 1.1s ease-in-out infinite}
+#cy-loader .cy-hearts span:before,#cy-loader .cy-hearts span:after{content:"";position:absolute;width:26px;height:26px;border-radius:50%;background:inherit}
+#cy-loader .cy-hearts span:before{left:-13px}#cy-loader .cy-hearts span:after{top:-13px}
+#cy-loader .cy-hearts span:nth-child(2){background:#ff7aa8;opacity:.55;animation-delay:.2s;transform:rotate(45deg) scale(1.5)}
+#cy-loader .cy-bar{width:140px;height:4px;border-radius:4px;background:rgba(230,42,122,.15);overflow:hidden}
+#cy-loader .cy-bar i{display:block;width:40%;height:100%;border-radius:4px;background:linear-gradient(90deg,#e62a7a,#ff7aa8);animation:cyl 1s ease-in-out infinite}
+@keyframes cyb{0%,100%{transform:rotate(45deg) scale(.85)}50%{transform:rotate(45deg) scale(1.05)}}
+@keyframes cyl{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+@media (prefers-reduced-motion:reduce){#cy-loader *{animation:none!important}}
+</style>
+<script>
+(function(){
+  var MIN=1500, MAX=2500, t0=Date.now(), done=false;
+  function mk(){ if(document.getElementById('cy-loader')||!document.body) return;
+    var d=document.createElement('div'); d.id='cy-loader'; d.setAttribute('aria-hidden','true');
+    d.innerHTML='<div class="cy-hearts"><span></span><span></span></div><div class="cy-bar"><i></i></div>';
+    document.body.insertBefore(d,document.body.firstChild); }
+  function hide(){ if(done) return; var w=MIN-(Date.now()-t0);
+    if(w>0){ setTimeout(hide,w); return; } done=true;
+    var d=document.getElementById('cy-loader'); if(d){ d.classList.add('cy-hide'); setTimeout(function(){d.remove();},400);} }
+  if(document.body) mk(); else document.addEventListener('DOMContentLoaded',mk);
+  // auction window: hide when first ad slot finishes rendering, or at MAX ms
+  window.googletag=window.googletag||{cmd:[]};
+  googletag.cmd.push(function(){ googletag.pubads().addEventListener('slotRenderEnded',function(){ hide(); }); });
+  setTimeout(hide,MAX);
+})();
+</script>
+<!-- /end HFCM by 99 Robots -->
+
+<!-- Google Tag Manager for WordPress by gtm4wp.com -->
+<!-- GTM Container placement set to automatic -->
+<script data-cfasync="false" data-pagespeed-no-defer>
+	var dataLayer_content = {"pagePostType":"post","pagePostType2":"single-post","pageCategory":["beziehungen"],"pageAttributes":["app-vergleich","beziehung-ohne-verpflichtung","casual-dating","dating-apps","flirt-apps","lockere-treffen","online-dating-deutschland","partnersuche-online","singles-deutschland","unkomplizierte-verabredungen"],"pagePostAuthor":"Ana Alice"};
+	dataLayer.push( dataLayer_content );
+</script>
+<script data-cfasync="false" data-pagespeed-no-defer>
+(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-573CZ7M5');
+</script>
+<!-- End Google Tag Manager for WordPress by gtm4wp.com --><style id="wp-custom-css">
+/* =========================================================
+   1. HEADER ROSA COMPACTO DO TEMA (Sem espaço em branco)
+   ========================================================= */
+header.header {
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+#primary.page-header,
+.page-header.header-small,
+.page-header {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-top: 85px !important;    /* Espaço justo abaixo do menu fixo */
+    padding-bottom: 35px !important; /* Faixa rosa fina e elegante */
+    margin: 0 !important;
+    background-color: #d81b60 !important;
+    background-image: none !important;
+}
+
+/* Centralização perfeita do Título */
+.page-header .container {
+    padding: 0 !important;
+    margin: 0 auto !important;
+}
+
+.page-header .title,
+.header-filter h1.title,
+.header-filter h1.hestia-title,
+.page-header h1 {
+    color: #ffffff !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    text-shadow: none !important;
+    margin: 0 auto !important;
+    padding: 0 15px !important;
+    line-height: 1.3 !important;
+    display: block !important;
+    width: 100% !important;
+}
+
+.header-filter::before,
+.header-filter::after {
+    display: none !important;
+}
+
+/* =========================================================
+   2. CARD BRANCO COLADO NA FAIXA ROSA
+   ========================================================= */
+body {
+    background-color: #f4f5f7 !important;
+}
+
+.main,
+.blog-post,
+.section-text,
+.page-content-wrap {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    background: transparent !important;
+}
+
+.main-raised {
+    margin: -15px auto 30px auto !important; /* Encaixe sem engolir o anúncio */
+    max-width: 850px !important;
+    width: 92% !important;
+    background: #ffffff !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+    padding: 20px !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+/* =========================================================
+   3. ESTRUTURA DO ANÚNCIO (IN-FEED) & EMPURRÃO DO QUIZ
+   ========================================================= */
+.col-md-8.page-content-wrap {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Força o bloco de anúncio a ser a primeira coisa visível no card */
+.winup-ad-block,
+.winup-ad-block-1,
+winupads {
+    order: 1 !important;
+    display: block !important;
+    clear: both !important;
+    margin: 0 auto 15px auto !important;
+    width: 100% !important;
+    text-align: center !important;
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+.winup-ad-block iframe,
+#content1 iframe {
+    display: block !important;
+    margin: 0 auto !important;
+    max-width: 100% !important;
+}
+
+/* Força o Quiz a ficar estritamente abaixo do anúncio */
+#qwu-quiz-en {
+    order: 2 !important;
+    clear: both !important;
+    margin-top: 15px !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Demais parágrafos e botões seguem abaixo */
+p.wp-block-paragraph,
+.wp-block-heading,
+.has-custom-css {
+    order: 3 !important;
+}
+
+/* =========================================================
+   4. ESTILIZAÇÃO DOS BOTÕES DE AÇÃO (.pf-dbtn)
+   ========================================================= */
+p.wp-block-paragraph br {
+    display: none !important;
+}
+
+a.pf-dbtn {
+    display: block !important;
+    width: 100% !important;
+    padding: 15px 20px !important;
+    margin: 8px 0 !important;
+    border-radius: 8px !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+    text-transform: uppercase !important;
+    text-align: center !important;
+    color: #ffffff !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease-in-out !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+    box-sizing: border-box !important;
+}
+
+a.pf-dbtn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14) !important;
+    color: #ffffff !important;
+    filter: brightness(1.05) !important;
+}
+
+a.pf-dbtn:nth-of-type(1) { background-color: #d81b60 !important; }
+a.pf-dbtn:nth-of-type(2) { background-color: #3b62f6 !important; }
+a.pf-dbtn:nth-of-type(3) { background-color: #42ac53 !important; }
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* =========================================================
+   SANGRIA COMPLETA DA IMAGEM APENAS NO HEADER DO REWARD
+   ========================================================= */
+#masterRewarded .ramx-card,
+#masterRewarded .ramx-modal-content {
+    padding-top: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    overflow: hidden !important;
+    border-radius: 18px !important;
+}
+
+/* Ocupa 100% do topo do modal */
+#masterRewarded .ramx-header {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 180px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    position: relative !important;
+    overflow: hidden !important;
+    background-color: #FCE4EC !important;
+    box-sizing: border-box !important;
+}
+
+/* Aplica o filtro de esticar APENAS na imagem do topo do topo do modal */
+#masterRewarded .ramx-header img {
+    width: 100% !important;
+    min-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Protege os emojis de texto contra alteração de tamanho */
+img.emoji {
+    width: 1em !important;
+    height: 1em !important;
+    display: inline !important;
+    margin: 0 0.07em !important;
+    vertical-align: -0.1em !important;
+}
+
+
+
+
+/* =========================================================
+   3. POSICIONAMENTO LIMPO DO ANÚNCIO E DO QUIZ (SEM FLEXBOX)
+   ========================================================= */
+/* Remove a regra de flexbox que puxou os metadados do rodapé */
+.col-md-8.page-content-wrap {
+    display: block !important;
+}
+
+/* Anúncio centralizado no topo com margem ajustada */
+.winup-ad-block,
+.winup-ad-block-1,
+winupads {
+    display: block !important;
+    clear: both !important;
+    float: none !important;
+    margin: -8px auto 16px auto !important;
+    width: 100% !important;
+    text-align: center !important;
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+.winup-ad-block iframe,
+#content1 iframe {
+    display: block !important;
+    margin: 0 auto !important;
+    max-width: 100% !important;
+}
+
+/* Quiz logo abaixo do anúncio mantendo fluxo natural */
+#qwu-quiz-en {
+    display: block !important;
+    clear: both !important;
+    margin-top: 16px !important;
+    margin-bottom: 32px !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Mantém os metadados ocilados ao final do post */
+.page-content-wrap div[style*="display:none"],
+.page-content-wrap div[style*="display: none"] {
+    display: none !important;
+}
+
+/* =========================================================
+   4. ESTILIZAÇÃO DOS BOTÕES DE AÇÃO (.pf-dbtn)
+   ========================================================= */
+p.wp-block-paragraph br {
+    display: none !important;
+}
+
+a.pf-dbtn {
+    display: block !important;
+    width: 100% !important;
+    padding: 15px 20px !important;
+    margin: 8px 0 !important;
+    border-radius: 8px !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+    text-transform: uppercase !important;
+    text-align: center !important;
+    color: #ffffff !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease-in-out !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+    box-sizing: border-box !important;
+}
+
+a.pf-dbtn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14) !important;
+    color: #ffffff !important;
+    filter: brightness(1.05) !important;
+}
+
+a.pf-dbtn:nth-of-type(1) { background-color: #d81b60 !important; }
+a.pf-dbtn:nth-of-type(2) { background-color: #3b62f6 !important; }
+a.pf-dbtn:nth-of-type(3) { background-color: #42ac53 !important; }
+</style>
+</head>
+
+<body class="wp-singular post-template-default single single-post postid-105 single-format-standard wp-custom-logo wp-theme-hestia-pro blog-post header-layout-default">
+	
+<!-- GTM Container placement set to automatic -->
+<!-- Google Tag Manager (noscript) -->
+				<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-573CZ7M5" height="0" width="0" style="display:none;visibility:hidden" aria-hidden="true"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->	<div class="wrapper post-105 post type-post status-publish format-standard has-post-thumbnail hentry category-beziehungen tag-app-vergleich tag-beziehung-ohne-verpflichtung tag-casual-dating tag-dating-apps tag-flirt-apps tag-lockere-treffen tag-online-dating-deutschland tag-partnersuche-online tag-singles-deutschland tag-unkomplizierte-verabredungen default ">
+		<header class="header ">
+			<div style="display: none"></div>		<nav class="navbar navbar-default navbar-fixed-top  hestia_left navbar-not-transparent">
+						<div class="container">
+						<div class="navbar-header">
+			<div class="title-logo-wrapper">
+				<a class="navbar-brand" href="https://de.credityup.com/"
+						title="De credityup">
+					<img  src="https://de.credityup.com/wp-content/uploads/2026/10/cropped-Logo-de-Figuras-Entrelacadas-1.png" alt="De credityup"></a>
+			</div>
+								<div class="navbar-toggle-wrapper">
+						<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#main-navigation">
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+				<span class="sr-only">Toggle Navigation</span>
+			</button>
+					</div>
+				</div>
+		<div id="main-navigation" class="collapse navbar-collapse"><ul id="menu-header-nav" class="nav navbar-nav"><li id="menu-item-68" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-68"><a title="Beginnen" href="/">Beginnen</a></li>
+<li id="menu-item-63" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-63"><a title="Apps" href="https://de.credityup.com/category/apps/">Apps</a></li>
+<li id="menu-item-64" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-64"><a title="Flirten" href="https://de.credityup.com/category/flirten/">Flirten</a></li>
+<li id="menu-item-65" class="menu-item menu-item-type-taxonomy menu-item-object-category current-post-ancestor current-menu-parent current-post-parent menu-item-65"><a title="Beziehungen" href="https://de.credityup.com/category/beziehungen/">Beziehungen</a></li>
+<li id="menu-item-66" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-66"><a title="Liebe" href="https://de.credityup.com/category/liebe/">Liebe</a></li>
+<li id="menu-item-67" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-67"><a title="Dating" href="https://de.credityup.com/category/dating/">Dating</a></li>
+</ul></div>			</div>
+					</nav>
+				</header>
+<div id="primary" class="boxed-layout-header page-header header-small" data-parallax="active" ><div class="container"><div class="row"><div class="col-md-10 col-md-offset-1 text-center"><h1 class="hestia-title entry-title">Apps für lockere Begegnungen: Ihren Weg zur unkomplizierten Verabredung finden</h1><h4 class="author">Published by <a href="https://de.credityup.com/author/viralnetwork-redacao-alice/" class="vcard author"><strong class="fn">Ana Alice</strong></a> on <time class="entry-date published" datetime="2026-10-07T14:47:27+00:00" content="2026-10-07">outubro 7, 2026</time></h4></div></div></div><div class="header-filter" style="background-image: url(https://de.credityup.com/wp-content/uploads/2026/10/apps-leichte-dates-unkomplizierte-treffen-lp-02-art01.png);"></div></div>
+<div class="main  main-raised ">
+	<div class="blog-post blog-post-wrapper">
+		<div class="container">
+			<article id="post-105" class="section section-text">
+	<div class="row">
+				<div class="col-md-8 single-post-container" data-layout="sidebar-right">
+
+			<div class="single-post-wrap entry-content"><div class="winup-ad-block winup-ad-block-1" style="text-align:center;"><winupads tag="content1" label="Werbung"></winupads></div><p>Die Wahl der richtigen App für zwanglose Treffen hängt stark von Ihren persönlichen Vorlieben und dem gewünschten Grad der Verbindlichkeit ab. Eine pauschale Empfehlung gibt es nicht, da jede Plattform unterschiedliche Schwerpunkte setzt.</p><p><a data-pf="btn" href="https://de.credityup.com/apps-leichte-dates-unkomplizierte-treffen-lp-02-art02/" class="pf-dbtn" style="display:block;width:100%;background:#0b76ef;color:#fff;font-weight:700;font-size:15px;line-height:1.3;letter-spacing:.3px;text-transform:uppercase;text-align:center;padding:20px 18px;border-radius:6px;text-decoration:none;margin:26px 0 4px;box-sizing:border-box;">Zum Leitfaden <span style="font-weight:700;">➔</span></a></p><h2>Definieren Sie Ihr Ziel für lockere Treffen</h2>
+<p>Bevor Sie sich anmelden, überlegen Sie genau, was Sie suchen. Geht es um ein einmaliges Treffen oder die Möglichkeit, jemanden für gelegentliche Verabredungen kennenzulernen?</p><div class="winup-ad-block winup-ad-block-2" style="text-align:center;"><winupads tag="content2" label="Werbung" lazy></winupads></div><p>Viele Nutzer wünschen sich unkomplizierte Kontakte ohne den Druck einer festen Beziehung. Apps, die eine große Nutzerbasis haben, erhöhen die Chance, jemanden zu finden, der ähnliche Absichten verfolgt.</p><h2>Gratis-Funktionen vs. Premium-Abos: Worauf achten?</h2>
+<p>Kostenlose Apps bieten oft grundlegende Funktionen wie das Erstellen eines Profils und das Senden von Nachrichten. Die Reichweite und die Möglichkeit, fortgeschrittene Suchfilter zu nutzen, sind jedoch meist eingeschränkt.</p><p>Premium-Versionen können zusätzliche Vorteile bieten, wie beispielsweise unbegrenzte Likes oder die Möglichkeit zu sehen, wer Ihr Profil besucht hat. Prüfen Sie genau, ob diese Features für Ihre Bedürfnisse relevant sind und den Preis wert darstellen.</p><p>Manchmal sind kostenpflichtige Abos notwendig, um wirklich aktiv und sichtbar zu sein. Dies sollte aber nicht der einzige Grund für eine Anmeldung sein.</p><h2>Datenschutz und Sicherheit als Priorität</h2>
+<p>Bei der Nutzung von Apps für lockere Begegnungen ist es wichtig, auf die Sicherheit zu achten. Lesen Sie die Datenschutzrichtlinien sorgfältig durch, um zu verstehen, welche Informationen Sie preisgeben.</p><p>Vermeiden Sie es, zu viele persönliche Details wie Ihre genaue Adresse oder Ihren Arbeitsplatz preiszugeben, bis Sie der anderen Person vertrauen. Nutzen Sie die integrierten Melde- und Blockierfunktionen, falls es zu unangenehmen Situationen kommt.</p><p>Verabredungen sollten immer an einem öffentlichen Ort beginnen. Informieren Sie eine vertraute Person über Ihre Pläne.</p><p><a data-pf="btn" href="https://de.credityup.com/apps-leichte-dates-unkomplizierte-treffen-lp-02-art03/" class="pf-dbtn" style="display:block;width:100%;background:#f5a623;color:#fff;font-weight:700;font-size:15px;line-height:1.3;letter-spacing:.3px;text-transform:uppercase;text-align:center;padding:20px 18px;border-radius:6px;text-decoration:none;margin:26px 0 4px;box-sizing:border-box;">Mehr erfahren <span style="font-weight:700;">➔</span></a></p><h2>Wie die Nutzerbasis die Erfahrung beeinflusst</h2>
+<p>Eine größere Nutzerbasis bedeutet nicht zwangsläufig, dass Sie schneller fündündig werden. Die geografische Verteilung und die Aktivität der Nutzer in Ihrer Nähe spielen eine entscheidende Rolle.</p><p>Manche Apps sind eher auf langfristige Beziehungen ausgerichtet, auch wenn sie für lockere Treffen genutzt werden können. Dies kann zu Missverständnissen führen, wenn die Erwartungen nicht übereinstimmen.</p><p>Die Community einer App spiegelt oft ihre Hauptintention wider. Achten Sie auf Bewertungen und Erfahrungsberichte, um ein Gefühl für die dortige Atmosphäre zu bekommen.</p><h2>Regionale Unterschiede bei Dating-Apps</h2>
+<p>Die Beliebtheit und Funktionalität von Dating-Apps kann sich von Region zu Region unterscheiden. Was in einer Großstadt gut funktioniert, ist in einer ländlicheren Gegend möglicherweise weniger verbreitet.</p><p>Es lohnt sich, Apps auszuprobieren, die in Ihrer spezifischen Region eine hohe Nutzeraktivität aufweisen. Dies erhöht die Wahrscheinlichkeit, passende Kontakte zu knüpfen.</p><p>Informieren Sie sich über lokale Gegebenheiten, die die Nutzung von Dating-Apps beeinflussen könnten, wie z.B. die Dichte der Nutzer.</p><h2>Die Wahl der richtigen Plattform für gelegentliche Treffen</h2>
+<p>Es gibt zahlreiche Apps, die sich für unkomplizierte Treffen eignen. Die Entscheidung hängt von Ihren persönlichen Präferenzen ab, ob Sie Wert auf schnelle Interaktion oder eine etwas tiefere, aber dennoch lockere Kommunikation legen.</p><p>Manche Plattformen sind bekannt für ihre Benutzerfreundlichkeit und schnelle Ergebnisse, während andere mehr Wert auf detaillierte Profile legen, was bei lockeren Treffen manchmal als überflüssig empfunden wird.</p><p>Probieren Sie verschiedene Optionen aus, um herauszufinden, welche am besten zu Ihrem Stil und Ihren Erwartungen passt.</p><p>Denken Sie daran, dass die Technik nur ein Werkzeug ist; die menschliche Komponente der Konversation und des Kennenlernens bleibt entscheidend.</p><p><a data-pf="btn" href="https://de.credityup.com/apps-leichte-dates-unkomplizierte-treffen-lp-02-art02/" class="pf-dbtn" style="display:block;width:100%;background:#0b76ef;color:#fff;font-weight:700;font-size:15px;line-height:1.3;letter-spacing:.3px;text-transform:uppercase;text-align:center;padding:20px 18px;border-radius:6px;text-decoration:none;margin:26px 0 4px;box-sizing:border-box;">Zum Leitfaden <span style="font-weight:700;">➔</span></a></p><p style="margin:4px 0 18px;text-align:center;font-size:12px;color:#6b7280;">Sie bleiben auf dieser Seite.</p><p class="legal-notice"><em>Die Verfügbarkeit und die Funktionen von Apps können sich ändern. Es ist ratsam, die aktuellen Nutzungsbedingungen und Datenschutzrichtlinien auf den offiziellen Webseiten der Anbieter zu prüfen.</em></p><p class="sources">Sources: Verbraucherzentrale, Bundesamt für Familie und zivilgesellschaftliche Aufgaben</p><div class="hidden-meta">
+        Keyword: Apps für leichte Dates<br />
+        Tags: Dating-Apps, Lockere Treffen, Unkomplizierte Verabredungen, Online-Dating Deutschland, Flirt-Apps, Casual Dating, Beziehung ohne Verpflichtung, Singles Deutschland, App-Vergleich, Partnersuche Online<br />
+        Category: 💕 Namoro<br />
+        Meta: Finden Sie die passende App für lockere Treffen in Deutschland. Tipps zur Auswahl, Sicherheit und Unterschiede zwischen kostenlosen und kostenpflichtigen Angeboten.<br />
+        Slug: /apps-leichte-dates-unkomplizierte-treffen-lp-02-art01
+    </div></p></div>
+		<div class="section section-blog-info">
+			<div class="row">
+				<div class="col-md-6">
+					<div class="entry-categories">Categories:						<span class="label label-primary"><a href="https://de.credityup.com/category/beziehungen/">Beziehungen</a></span>					</div>
+					<div class="entry-tags">Tags: <span class="entry-tag"><a href="https://de.credityup.com/tag/app-vergleich/" rel="tag">App-Vergleich</a></span><span class="entry-tag"><a href="https://de.credityup.com/tag/beziehung-ohne-verpflichtung/" rel="tag">Beziehung ohne Verpflichtung</a></span><span class="entry-tag"><a href="https://de.credityup.com/tag/casual-dating/" rel="tag">Casual Dating</a></span><span class="entry-tag"><a href="https://de.credityup.com/tag/dating-apps/" rel="tag">Dating-Apps</a></span><span class="entry-tag"><a href="https://de.credityup.com/tag/flirt-apps/" rel="tag">Flirt-Apps</a></span><span class="entry-tag"><a href="https://de.credityup.com/tag/lockere-treffen/" rel="tag">Lockere Treffen</a></span><span class="entry-tag"><a href="https://de.credityup.com/tag/online-dating-deutschland/" rel="tag">Online-Dating Deutschland</a></span><span class="entry-tag"><a href="https://de.credityup.com/tag/partnersuche-online/" rel="tag">Partnersuche online</a></span><span class="entry-tag"><a href="https://de.credityup.com/tag/singles-deutschland/" rel="tag">Singles Deutschland</a></span><span class="entry-tag"><a href="https://de.credityup.com/tag/unkomplizierte-verabredungen/" rel="tag">Unkomplizierte Verabredungen</a></span></div>				</div>
+				
+        <div class="col-md-6">
+            <div class="entry-social">
+                <a target="_blank" rel="tooltip"
+                   data-original-title="Share on Facebook"
+                   class="btn btn-just-icon btn-round btn-facebook"
+                   href="https://www.facebook.com/sharer.php?u=https://de.credityup.com/apps-leichte-dates-unkomplizierte-treffen-lp-02-art01/">
+                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" width="20" height="17"><path fill="currentColor" d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"></path></svg>
+                </a>
+                
+                <a target="_blank" rel="tooltip"
+                   data-original-title="Share on Twitter"
+                   class="btn btn-just-icon btn-round btn-twitter"
+                   href="http://twitter.com/share?url=https://de.credityup.com/apps-leichte-dates-unkomplizierte-treffen-lp-02-art01/&#038;text=Apps%20f%C3%BCr%20lockere%20Begegnungen%3A%20Ihren%20Weg%20zur%20unkomplizierten%20Verabredung%20finden">
+                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="20" height="17"><path fill="currentColor" d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"></path></svg>
+                </a>
+                
+                <a rel="tooltip"
+                   data-original-title=" Share on Email"
+                   class="btn btn-just-icon btn-round"
+                   href="mailto:?subject=Apps%20für%20lockere%20Begegnungen:%20Ihren%20Weg%20zur%20unkomplizierten%20Verabredung%20finden&#038;body=https://de.credityup.com/apps-leichte-dates-unkomplizierte-treffen-lp-02-art01/">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="20" height="17"><path fill="currentColor" d="M502.3 190.8c3.9-3.1 9.7-.2 9.7 4.7V400c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48V195.6c0-5 5.7-7.8 9.7-4.7 22.4 17.4 52.1 39.5 154.1 113.6 21.1 15.4 56.7 47.8 92.2 47.6 35.7.3 72-32.8 92.3-47.6 102-74.1 131.6-96.3 154-113.7zM256 320c23.2.4 56.6-29.2 73.4-41.4 132.7-96.3 142.8-104.7 173.4-128.7 5.8-4.5 9.2-11.5 9.2-18.9v-19c0-26.5-21.5-48-48-48H48C21.5 64 0 85.5 0 112v19c0 7.4 3.4 14.3 9.2 18.9 30.6 23.9 40.7 32.4 173.4 128.7 16.8 12.2 50.2 41.8 73.4 41.4z"></path></svg>
+               </a>
+            </div>
+		</div>			</div>
+			<hr>
+			
+<div id="comments" class="section section-comments">
+	<div class="row">
+		<div class="col-md-12">
+			<div class="media-area">
+				<h3 class="hestia-title text-center">
+					0 Comments				</h3>
+							</div>
+			<div class="media-body">
+					<div id="respond" class="comment-respond">
+		<h3 class="hestia-title text-center">Deixe um comentário <small><a rel="nofollow" id="cancel-comment-reply-link" href="/apps-leichte-dates-unkomplizierte-treffen-lp-02-art01/#respond" style="display:none;">Cancelar resposta</a></small></h3><span class="pull-left author"><div class="avatar"><img src="https://de.credityup.com/wp-content/themes/hestia-pro/assets/img/placeholder.jpg" alt="Avatar placeholder" height="64" width="64"/></div></span><form autocomplete="off"  action="https://de.credityup.com/wp-comments-post.php" method="post" id="commentform" class="form media-body"><p class="comment-notes"><span id="email-notes">O seu endereço de e-mail não será publicado.</span> <span class="required-field-message">Campos obrigatórios são marcados com <span class="required">*</span></span></p><div class="row"> <div class="col-md-4"> <div class="form-group label-floating is-empty"> <label class="control-label">Name <span class="required">*</span></label><input id="author" name="author" class="form-control" type="text" aria-required='true' /> <span class="hestia-input"></span> </div> </div>
+<div class="col-md-4"> <div class="form-group label-floating is-empty"> <label class="control-label">Email <span class="required">*</span></label><input id="email" name="email" class="form-control" type="email" aria-required='true' /> <span class="hestia-input"></span> </div> </div>
+<div class="col-md-4"> <div class="form-group label-floating is-empty"> <label class="control-label">Website</label><input id="url" name="url" class="form-control" type="url" aria-required='true' /> <span class="hestia-input"></span> </div> </div> </div>
+<div class="form-group label-floating is-empty"> <label class="control-label">What&#039;s on your mind?</label><textarea id="comment" name="comment" class="form-control" rows="6" aria-required="true"></textarea><span class="hestia-input"></span> </div><p class="comment-form-cookies-consent"><input id="wp-comment-cookies-consent" name="wp-comment-cookies-consent" type="checkbox" value="yes" /> <label for="wp-comment-cookies-consent">Salvar meus dados neste navegador para a próxima vez que eu comentar.</label></p>
+<p class="form-submit"><input name="submit" type="submit" id="submit" class="btn btn-primary pull-right" value="Publicar comentário" /> <input type='hidden' name='comment_post_ID' value='105' id='comment_post_ID' />
+<input type='hidden' name='comment_parent' id='comment_parent' value='0' />
+</p></form>	</div><!-- #respond -->
+								</div>
+		</div>
+	</div>
+</div>
+		</div>
+		</div>	<div class="col-md-3 blog-sidebar-wrapper col-md-offset-1">
+		<aside id="secondary" class="blog-sidebar" role="complementary">
+						<div id="block-5" class="widget widget_block">
+<div class="wp-block-group"><div class="wp-block-group__inner-container is-layout-flow wp-block-group-is-layout-flow">
+<h2 class="wp-block-heading">Archiv</h2>
+
+
+<ul class="wp-block-archives-list wp-block-archives">	<li><a href='https://de.credityup.com/2026/10/'>outubro 2026</a></li>
+</ul></div></div>
+</div><div id="block-6" class="widget widget_block">
+<div class="wp-block-group"><div class="wp-block-group__inner-container is-layout-flow wp-block-group-is-layout-flow">
+<h2 class="wp-block-heading">Kategorien</h2>
+
+
+<ul class="wp-block-categories-list wp-block-categories-taxonomy-category wp-block-categories">	<li class="cat-item cat-item-4"><a href="https://de.credityup.com/category/apps/">Apps</a>
+</li>
+	<li class="cat-item cat-item-6"><a href="https://de.credityup.com/category/beziehungen/">Beziehungen</a>
+</li>
+	<li class="cat-item cat-item-8"><a href="https://de.credityup.com/category/dating/">Dating</a>
+</li>
+	<li class="cat-item cat-item-5"><a href="https://de.credityup.com/category/flirten/">Flirten</a>
+</li>
+	<li class="cat-item cat-item-7"><a href="https://de.credityup.com/category/liebe/">Liebe</a>
+</li>
+</ul></div></div>
+</div>					</aside><!-- .sidebar .widget-area -->
+	</div>
+			</div>
+</article>
+
+		</div>
+	</div>
+</div>
+
+			<div class="section related-posts">
+				<div class="container">
+					<div class="row">
+						<div class="col-md-12">
+							<h2 class="hestia-title text-center">Related Posts</h2>
+							<div class="row">
+																	<div class="col-md-4">
+										<div class="card card-blog">
+																							<div class="card-image">
+													<a href="https://de.credityup.com/apps-verabredung-match-minuten-lp-03-art03/" title="Schnelle Dates: So finden Sie Ihr Match in Minuten">
+														<img width="360" height="240" src="https://de.credityup.com/wp-content/uploads/2026/10/apps-verabredung-match-minuten-lp-03-art03-360x240.png" class="attachment-hestia-blog size-hestia-blog wp-post-image" alt="" decoding="async" loading="lazy" />													</a>
+												</div>
+																						<div class="content">
+												<h6 class="category text-info"><a href="https://de.credityup.com/category/beziehungen/" title="View all posts in Beziehungen" >Beziehungen</a> </h6>
+												<h4 class="card-title">
+													<a class="blog-item-title-link" href="https://de.credityup.com/apps-verabredung-match-minuten-lp-03-art03/" title="Schnelle Dates: So finden Sie Ihr Match in Minuten" rel="bookmark">
+														Schnelle Dates: So finden Sie Ihr Match in Minuten													</a>
+												</h4>
+												<p class="card-description">Apps für schnelle Verabredungen versprechen, Sie in Rekordzeit mit potenziellen Partnern zu verbinden. Doch der Erfolg hängt stark von Ihrer Herangehensweise ab, nicht nur von der App-Wahl. Ein durchdachtes Profil und klare Kommunikation sind entscheidend.<a class="moretag" href="https://de.credityup.com/apps-verabredung-match-minuten-lp-03-art03/"> Read more&hellip;</a></p>
+											</div>
+										</div>
+									</div>
+																	<div class="col-md-4">
+										<div class="card card-blog">
+																							<div class="card-image">
+													<a href="https://de.credityup.com/digitale-romanzen-liebe-finden-lp-01-art02/" title="Digitale Romanzen: Ihr Wegweiser zu Online-Beziehungen">
+														<img width="360" height="240" src="https://de.credityup.com/wp-content/uploads/2026/10/digitale-romanzen-liebe-finden-lp-01-art02-360x240.png" class="attachment-hestia-blog size-hestia-blog wp-post-image" alt="" decoding="async" loading="lazy" />													</a>
+												</div>
+																						<div class="content">
+												<h6 class="category text-info"><a href="https://de.credityup.com/category/beziehungen/" title="View all posts in Beziehungen" >Beziehungen</a> </h6>
+												<h4 class="card-title">
+													<a class="blog-item-title-link" href="https://de.credityup.com/digitale-romanzen-liebe-finden-lp-01-art02/" title="Digitale Romanzen: Ihr Wegweiser zu Online-Beziehungen" rel="bookmark">
+														Digitale Romanzen: Ihr Wegweiser zu Online-Beziehungen													</a>
+												</h4>
+												<p class="card-description">Die Suche nach einer passenden Partnerschaft hat sich ins Digitale verlagert. Unterschiedliche Plattformen sprechen verschiedene Bedürfnisse an. Apps populares em Deutschland Erfahren Sie, wie apps populares em deutschland mit klaren und aktuellen Informationen helfen kann.<a class="moretag" href="https://de.credityup.com/digitale-romanzen-liebe-finden-lp-01-art02/"> Read more&hellip;</a></p>
+											</div>
+										</div>
+									</div>
+																							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="footer-wrapper">
+						<footer class="footer footer-black footer-big">
+						<div class="container">
+																<div class="hestia-bottom-footer-content"><ul id="menu-footer-nav" class="footer-menu pull-left"><li id="menu-item-14" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-14"><a href="https://de.credityup.com/terms-of-use/">Nutzungsbedingungen</a></li>
+<li id="menu-item-17" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-privacy-policy menu-item-17"><a rel="privacy-policy" href="https://de.credityup.com/privacy-policy/">Datenschutzerklärung</a></li>
+<li id="menu-item-21" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-21"><a href="https://de.credityup.com/cookie-policy/">Haftungsausschluss</a></li>
+<li id="menu-item-61" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-61"><a href="/">Beginnen</a></li>
+</ul><div class="copyright pull-right">Hestia | Developed by <a href="https://themeisle.com" rel="nofollow">ThemeIsle</a></div></div>			</div>
+					</footer>
+				</div>
+	</div>
+<script type="speculationrules">
+{"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":["/wp-*.php","/wp-admin/*","/wp-content/uploads/*","/wp-content/*","/wp-content/plugins/*","/wp-content/themes/hestia-pro/*","/*\\?(.+)"]}},{"not":{"selector_matches":"a[rel~=\"nofollow\"]"}},{"not":{"selector_matches":".no-prefetch, .no-prefetch a"}}]},"eagerness":"conservative"}]}
+</script>
+        <!-- Rewarded Ad Modal Plugin -->
+        <style>
+            #masterRewarded { display:none; position:fixed; inset:0; width:100%; height:100%; background:rgba(15,23,42,0.55); z-index:99999; padding:20px; box-sizing:border-box; overflow-y:auto; }
+            #masterRewarded.active { display:flex; align-items:center; justify-content:center; }
+            body.no-scroll, html.no-scroll { overflow:hidden !important; height:100vh !important; }
+            .ramx-card { position:relative; background:#fff; border-radius:22px; max-width:480px; width:100%; box-shadow:0 25px 50px -12px rgba(0,0,0,0.4); overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+            .ramx-close { position:absolute; top:8px; right:8px; width:13px; height:13px; border-radius:50%; background:transparent; border:none; color:#FFFFFF; opacity:0.15; font-size:10px; font-weight:300; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; z-index:2; padding:0; transition:opacity 0.2s; }
+            .ramx-close:hover { opacity:1 !important; }
+            .ramx-header { background:#d3226c; padding:16px 24px; display:flex; align-items:center; justify-content:center; min-height:128px; }
+            .ramx-header img { height:106px; width:auto; max-width:90%; object-fit:contain; display:block; }
+            .ramx-body { padding:26px 24px 22px; text-align:center; }
+            .ramx-badge { display:inline-block; padding:6px 14px; background:#f1f5f9; color:#c22969; font-size:11px; font-weight:700; letter-spacing:0.5px; border-radius:999px; margin-bottom:14px; }
+            .ramx-title { font-size:20px; font-weight:800; color:#0f172a; margin:0 0 12px; line-height:1.25; text-transform:uppercase; }
+            .ramx-desc { font-size:14px; color:#475569; line-height:1.5; margin:0 0 18px; }
+            .ramx-buttons { display:flex; flex-direction:column; gap:12px; margin-bottom:14px; }
+            .ramx-btn { display:flex; align-items:center; gap:14px; padding:14px 16px; border:1.5px solid #e2e8f0; border-radius:14px; background:#fff; cursor:pointer; transition:border-color 0.15s, transform 0.05s; text-align:left; width:100%; font-family:inherit; }
+            .ramx-btn:hover { border-color:#c22969; }
+            .ramx-btn:active { transform:scale(0.99); }
+            .ramx-btn-icon { font-size:22px; flex-shrink:0; width:38px; height:38px; display:flex; align-items:center; justify-content:center; }
+            .ramx-btn-text { flex:1; font-size:14px; font-weight:600; color:#1e293b; line-height:1.3; }
+            .ramx-btn-arrow { flex-shrink:0; width:28px; height:28px; border-radius:50%; background:#c22969; color:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; }
+            .ramx-footer { font-size:12px; color:#94a3b8; font-style:italic; margin:6px 0 0; }
+            .ram-reward-trigger-loading { opacity:0.6 !important; pointer-events:none !important; cursor:progress !important; }
+        </style>
+        <div id="masterRewarded" role="dialog" aria-modal="true">
+            <div class="ramx-card">
+                <button type="button" class="ramx-close" id="ramxClose" aria-label="Fechar">×</button>
+                <div class="ramx-header">
+                                            <img alt="" data-ram-img-src="http://de.credityup.com/wp-content/uploads/2026/10/relacio4.jpg" referrerpolicy="no-referrer" loading="eager" onerror="this.style.display='none'">
+                                    </div>
+                <div class="ramx-body">
+                                        <h2 class="ramx-title" style="font-size:20px;font-weight:800;">WEITERLESEN</h2>
+                                            <p class="ramx-desc" style="font-size:14px;font-weight:400;">Um diese Seite weiterzulesen, können Sie sich eine kurze Werbung ansehen.
+Sobald die Werbung zu Ende ist, wird dieser Inhalt freigeschaltet.</p>
+                                        <div class="ramx-buttons" id="ramxButtons"></div>
+                                            <p class="ramx-footer" style="font-size:12px;font-weight:400;font-style:italic;">Wenn Sie die Werbung vor dem Ende schließen oder überspringen, wird der Inhalt möglicherweise nicht freigeschaltet.</p>
+                                    </div>
+            </div>
+        </div>
+        <script>
+        (function() {
+            const adSlotWeb = "\/23340104016\/de.credityup.com\/de_credityup_com_web_rewarded_20261007";
+            const adSlotMobile = "\/23340104016\/de.credityup.com\/de_credityup_com_mobile_rewarded_20261007";
+            const IS_MOBILE_MAX = 768;
+            const isMobileViewport = () => (window.innerWidth || document.documentElement.clientWidth || 0) < IS_MOBILE_MAX;
+            const slotName = isMobileViewport() ? (adSlotMobile || adSlotWeb) : adSlotWeb;
+            const postId = "105";
+            const urlContains = [];
+            const buttonsCfg = (function(){
+                // Base64 bypass: Polylang/WPML injeta /fr/ em URLs detectadas no HTML.
+                // Encodamos pra que o filtro não enxergue.
+                try { return JSON.parse(decodeURIComponent(escape(atob('W3siaWNvbiI6IiIsInRleHQiOiJXRVJCVU5HIEFOU0VIRU4gVU5EIFdFSVRFUkxFU0VOIiwicmVkaXJlY3RfdXJsIjoiaHR0cHM6XC9cL3ZpcmFsbmV0d29yay5jb20uYnJcL3JcL2ZseHNvcGhpZWRlIiwiaGFzaCI6IiJ9XQ==')))); }
+                catch(e) { return []; }
+            })();
+            const trackingId = "reward_ebedd7a9088c7ce81caeb59e74251b42";
+            const displayMode = "auto";
+            const triggerScope = "specific";
+            const REWARD_TRIGGER_SELECTOR = triggerScope === 'all_buttons'
+                ? '.ram-content-scope .wp-block-button__link:not(.ram-reward-skip)'
+                : '.ram-reward-trigger:not(.ram-reward-skip)';
+            const isInternalUrl = (url) => {
+                try { return new URL(url, window.location.origin).origin === window.location.origin; }
+                catch { return false; }
+            };
+
+            // Coleta UTMs da URL atual (todas as utm_*)
+            const collectUtms = () => {
+                const out = {};
+                try {
+                    const p = new URLSearchParams(window.location.search);
+                    p.forEach((v, k) => { if (/^utm_/i.test(k) && v) out[k.toLowerCase()] = v; });
+                } catch {}
+                return out;
+            };
+            // Remove prefixo de locale injetado por Polylang/WPML (/fr/, /es/, etc) entre host e /wp-content/, /wp-admin/, /wp-includes/
+            const ramStripLocale = (url) => {
+                if (!url) return url;
+                return String(url).replace(
+                    /^(https?:\/\/[^\/]+)\/[a-z]{2,5}(?:-[a-z]{2,5})?(\/wp-content\/|\/wp-includes\/|\/wp-admin\/)/i,
+                    '$1$2'
+                );
+            };
+            // Detector: loga se a página recarregar/navegar sem ter sido o plugin (debug do loop)
+            (function attachNavDetector(){
+                if (window.__ramNavDetectorOn) return;
+                window.__ramNavDetectorOn = true;
+                window.__ramExpectingNavigation = false;
+                window.addEventListener('beforeunload', () => {
+                    if (!window.__ramExpectingNavigation) {
+                        console.warn('%c[RAM] ⚠ Navegação INESPERADA — alguém fora do plugin disparou reload', 'color:#ef4444;font-weight:bold;font-size:13px', 'href:', location.href, 'ramRewardActive:', window.ramRewardActive);
+                    }
+                });
+            })();
+            // Aplica targeting padrão no pubads (post_id + utms)
+            const applyPubadsTargeting = () => {
+                try {
+                    const pa = googletag.pubads();
+                    if (postId) pa.setTargeting('id_post_wp', [String(postId)]);
+                    const utms = collectUtms();
+                    Object.keys(utms).forEach(k => { pa.setTargeting(k, [utms[k]]); });
+                } catch (e) { console.warn('[RAM] setTargeting falhou:', e); }
+            };
+
+            // Cooldown por-reward (chave única) e duração configurável no admin.
+            const COOLDOWN_KEY = 'ram_reward_cd_' + trackingId;
+            const COOLDOWN_MS = 86400000;
+            const isOnCooldown = () => { try { return COOLDOWN_MS > 0 && (Date.now() - parseInt(localStorage.getItem(COOLDOWN_KEY) || '0', 10)) < COOLDOWN_MS; } catch { return false; } };
+            const setCooldown = () => { try { localStorage.setItem(COOLDOWN_KEY, Date.now().toString()); } catch {} };
+            // Trava dos blocos de conteúdo (criada no <head> por RAM_Ad_Gate). Enquanto o popup
+            // ou o rewarded cobre a página, content1/content2 não são requisitados.
+            const gate = window.ramAdGate || { held:false, contentWon:false, hold(){}, release(){}, leaving(){}, passthrough(fn){ return fn(); } };
+            if (isOnCooldown()) { gate.release('cooldown'); return; }
+            // No modo "click", o destino vem do próprio botão do artigo — não depende
+            // dos botões configurados no admin, então a lista pode ficar vazia.
+            if (displayMode !== 'click' && (!Array.isArray(buttonsCfg) || buttonsCfg.length === 0)) { gate.release('sem-botoes'); return; }
+
+            const appendParams = (targetUrl) => {
+                if (!targetUrl) return targetUrl;
+                try {
+                    const current = new URLSearchParams(window.location.search);
+                    const target = new URL(targetUrl, window.location.origin);
+                    current.forEach((v, k) => {
+                        if (k !== 'ram_q' && k !== 'ram_a' && k !== 'step' && k !== 'ram_step' && !target.searchParams.has(k)) {
+                            target.searchParams.set(k, v);
+                        }
+                    });
+                    return target.toString();
+                } catch { return targetUrl; }
+            };
+
+            // Anexa hash do botão (#oferta-1, #step2, etc) — só sobrescreve se o destino não tiver hash própria
+            const applyHash = (targetUrl, hash) => {
+                if (!targetUrl || !hash) return targetUrl;
+                try {
+                    const u = new URL(targetUrl, window.location.origin);
+                    if (!u.hash) u.hash = '#' + hash;
+                    return u.toString();
+                } catch { return targetUrl; }
+            };
+
+            const buttonsEl = document.getElementById('ramxButtons');
+            const overlayEl = document.getElementById('masterRewarded');
+            const closeEl = document.getElementById('ramxClose');
+
+            // Define src da imagem do header via JS (bypass Polylang/WPML URL filters)
+            (function(){
+                const img = overlayEl ? overlayEl.querySelector('[data-ram-img-src]') : null;
+                if (!img) return;
+                const raw = img.getAttribute('data-ram-img-src');
+                img.src = ramStripLocale(raw);
+            })();
+
+            const btnTextStyle = "font-size:14px;font-weight:600;";
+            if (displayMode === 'click') {
+                // No modo "click" o destino já vem do botão do artigo — sem lista de escolha.
+                buttonsEl.style.display = 'none';
+            } else {
+                buttonsCfg.forEach((b, idx) => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'ramx-btn';
+                    btn.dataset.idx = String(idx);
+                    btn.innerHTML = `
+                        <span class="ramx-btn-icon">${b.icon ? escapeHtml(b.icon) : ''}</span>
+                        <span class="ramx-btn-text" style="${btnTextStyle}">${escapeHtml(b.text || '')}</span>
+                        <span class="ramx-btn-arrow">→</span>`;
+                    buttonsEl.appendChild(btn);
+                });
+            }
+
+            function escapeHtml(s) {
+                return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            }
+
+            const lock = () => { document.body.classList.add('no-scroll'); document.documentElement.classList.add('no-scroll'); };
+            const unlock = () => { document.body.classList.remove('no-scroll'); document.documentElement.classList.remove('no-scroll'); };
+            const clearTriggerLoadingState = () => { document.querySelectorAll('.ram-reward-trigger-loading').forEach(el => el.classList.remove('ram-reward-trigger-loading')); };
+            let overlayEverShown = false; // o popup já apareceu nesta pageview
+            let userClosed = false;       // o visitante fechou no X
+            const showOverlay = () => { overlayEverShown = true; overlayEl.classList.add('active'); lock(); window.ramRewardActive = true; clearTriggerLoadingState(); gate.hold('popup'); };
+            // navigating=true: a página vai sair (redirect) — mantém os blocos segurados pra não
+            // comprar um content1 segundos antes de descarregar a página.
+            const hideOverlay = (navigating) => {
+                overlayEl.classList.remove('active'); unlock(); window.ramRewardActive = false;
+                if (navigating) gate.leaving(6000); else gate.release('popup-fechado');
+            };
+
+            const shouldShow = () => {
+                if (!Array.isArray(urlContains) || urlContains.length === 0) return true;
+                return urlContains.some(s => s && location.href.includes(s));
+            };
+
+            // location.assign() pra mesma URL mudando só a #hash NÃO recarrega a página.
+            const willUnload = (url) => {
+                if (!url) return false;
+                try {
+                    const t = new URL(url, window.location.href), c = new URL(window.location.href);
+                    const sameDoc = t.origin === c.origin && t.pathname === c.pathname && t.search === c.search;
+                    return !(sameDoc && t.hash);
+                } catch { return true; }
+            };
+            // Fecha o popup e segue pro destino (se houver).
+            const leaveTo = (url) => {
+                hideOverlay(willUnload(url));
+                if (url) { window.__ramExpectingNavigation = true; window.location.assign(url); }
+            };
+
+            // Exibição automática do popup (resposta do rewarded, sem fill, ou GPT fora do ar).
+            const autoShow = () => {
+                // Fechou no X: não reabre por cima do conteúdo que acabou de ser liberado.
+                if (userClosed) return;
+                if (!shouldShow()) { gate.release('filtro-url'); return; }
+                // O tempo máximo de espera estourou e os blocos de conteúdo já foram liberados:
+                // nesta pageview o popup não abre mais por cima deles. (Se o GPT nem carregou,
+                // não há anúncio nenhum pra proteger e o popup abre normalmente.)
+                if (displayMode !== 'click' && gate.contentWon && window.googletag && googletag.apiReady) {
+                    console.log('[RAM] Rewarded chegou depois do tempo máximo — popup não exibido nesta pageview.');
+                    return;
+                }
+                showOverlay();
+            };
+
+            let pendingRedirect = '';
+            let makeVisibleFn = null;
+            let slotIsEmpty = false;
+            let clickInProgress = false;
+
+            closeEl.addEventListener('click', () => {
+                userClosed = true;
+                hideOverlay();
+            });
+
+            // Aciona o reward pro destino informado: espera o slot ficar pronto (até 4s)
+            // e mostra o anúncio; se vazio/indisponível/timeout, redireciona direto.
+            function proceedToReward(targetRedirect) {
+                if (clickInProgress) return;
+                clickInProgress = true;
+                pendingRedirect = targetRedirect;
+
+                const MAX_WAIT_MS = 4000;
+                const start = Date.now();
+                const direct = () => {
+                    // Cooldown SEMPRE ao desviar (slot vazio ou timeout) — evita loop
+                    try { setCooldown(); } catch {}
+                    console.log('[RAM modal] direct() — cooldown setado.');
+                    leaveTo(pendingRedirect);
+                };
+                // O rewarded cobre a página inteira: garante os blocos segurados enquanto ele estiver aberto.
+                const showRewarded = () => { gate.hold('rewarded'); makeVisibleFn(); };
+                if (slotIsEmpty) { direct(); return; }
+                if (typeof makeVisibleFn === 'function') { showRewarded(); return; }
+                const wait = setInterval(() => {
+                    if (slotIsEmpty) { clearInterval(wait); direct(); return; }
+                    if (typeof makeVisibleFn === 'function') { clearInterval(wait); showRewarded(); return; }
+                    if (Date.now() - start > MAX_WAIT_MS) {
+                        clearInterval(wait);
+                        console.warn('[RAM] Timeout esperando rewarded slot — pulando pro redirect.');
+                        direct();
+                    }
+                }, 100);
+            }
+
+            buttonsEl.addEventListener('click', (e) => {
+                const btn = e.target.closest('.ramx-btn');
+                if (!btn || clickInProgress) return;
+                const idx = parseInt(btn.dataset.idx, 10);
+                const cfg = buttonsCfg[idx];
+                if (!cfg) return;
+                btn.style.opacity = '0.6';
+                btn.style.pointerEvents = 'none';
+                proceedToReward(applyHash(appendParams(cfg.redirect_url || ''), cfg.hash || ''));
+            });
+
+            let rewardFlowStarted = false;
+            function startRewardFlow() {
+                if (rewardFlowStarted) return;
+                rewardFlowStarted = true;
+
+                if (displayMode !== 'click') {
+                    // Watchdog: se o script do Google Ad Manager falhar totalmente ao carregar
+                    // (bloqueio de rede/DNS, adblock etc.), a fila googletag.cmd nunca é
+                    // processada e o popup nunca apareceria. Isso garante que apareça mesmo assim.
+                    setTimeout(() => {
+                        // Já apareceu (e talvez já tenha sido fechado): não reabre.
+                        if (overlayEverShown || overlayEl.classList.contains('active')) return;
+                        console.warn('[RAM] Google Ad Manager não respondeu a tempo — exibindo popup mesmo assim.');
+                        slotIsEmpty = true;
+                        autoShow();
+                    }, 6000);
+                }
+
+                window.googletag = window.googletag || { cmd: [] };
+                googletag.cmd.push(() => {
+                applyPubadsTargeting();
+                const slot = googletag.defineOutOfPageSlot(slotName, googletag.enums.OutOfPageFormat.REWARDED);
+                if (!slot) {
+                    console.warn('[RAM] defineOutOfPageSlot retornou null:', slotName);
+                    slotIsEmpty = true;
+                    autoShow();
+                    return;
+                }
+                // Targeting também no slot (redundância pro GAM cruzar com ordens slot-level)
+                // Targeting slot-level via setConfig (setTargeting foi depreciado pelo GPT)
+                const _utms = collectUtms();
+                const _slotTargeting = {};
+                if (postId) _slotTargeting['id_post_wp'] = [String(postId)];
+                Object.keys(_utms).forEach(k => { _slotTargeting[k] = [_utms[k]]; });
+                if (Object.keys(_slotTargeting).length) {
+                    try {
+                        if (typeof slot.setConfig === 'function') slot.setConfig({ targeting: _slotTargeting });
+                        else Object.keys(_slotTargeting).forEach(k => slot.setTargeting(k, _slotTargeting[k]));
+                    } catch (e) { console.warn('[RAM] slot.setConfig falhou:', e); }
+                }
+                slot.addService(googletag.pubads());
+
+                googletag.pubads().addEventListener('rewardedSlotReady', (e) => {
+                    if (e.slot !== slot) return;
+                    makeVisibleFn = () => e.makeRewardedVisible();
+                    console.log('[RAM] rewardedSlotReady — modal pronto:', slotName);
+                    autoShow();
+                });
+
+                googletag.pubads().addEventListener('slotRenderEnded', (e) => {
+                    if (e.slot !== slot) return;
+                    if (e.isEmpty) {
+                        slotIsEmpty = true;
+                        console.warn('[RAM] Rewarded slot vazio (sem fill em GAM):', slotName);
+                        // Mesmo sem fill, mostra o modal pra que o user possa clicar e ser redirecionado
+                        autoShow();
+                    } else {
+                        console.log('[RAM] Rewarded slot OK. size=', e.size);
+                    }
+                });
+
+                googletag.pubads().addEventListener('rewardedSlotClosed', () => {
+                    setCooldown();
+                    leaveTo(pendingRedirect);
+                });
+
+                // Marca quando o GPT realmente pediu o rewarded (usado pelo safety-net abaixo).
+                let slotWasRequested = false;
+                googletag.pubads().addEventListener('slotRequested', (e) => { if (e.slot === slot) slotWasRequested = true; });
+
+                googletag.enableServices();
+                gate.passthrough(() => googletag.display(slot));
+                console.log('[RAM] Slot definido + display() chamado:', slotName);
+                // Safety-net: se o publisher tem disableInitialLoad(), o display() só registra o slot
+                // e é preciso um refresh() pra buscar o anúncio. Só refaz o pedido se o GPT NUNCA
+                // requisitou o slot — antes o refresh disparava sempre que a resposta demorava mais
+                // de 2s, gerando dois pedidos simultâneos do mesmo rewarded.
+                const safetyRefresh = () => {
+                    if (slotWasRequested || slotIsEmpty || makeVisibleFn) return;
+                    try {
+                        gate.passthrough(() => googletag.pubads().refresh([slot]));
+                        console.log('[RAM] Safety refresh() — display() não buscou o slot (disableInitialLoad).');
+                    } catch (e) { console.warn('[RAM] Safety refresh falhou:', e); }
+                };
+                let initialLoadOff = false;
+                try { initialLoadOff = typeof googletag.pubads().isInitialLoadDisabled === 'function' && !!googletag.pubads().isInitialLoadDisabled(); } catch (e) {}
+                if (initialLoadOff) safetyRefresh(); else setTimeout(safetyRefresh, 1000);
+                });
+            }
+
+            if (displayMode === 'click') {
+                document.addEventListener('click', (e) => {
+                    const trigger = e.target.closest(REWARD_TRIGGER_SELECTOR);
+                    if (!trigger) return;
+                    // Fora do filtro de URL (quando configurado): deixa o clique seguir normal.
+                    if (!shouldShow()) return;
+                    // Destino = o próprio link do botão do artigo (ou data-ram-redirect, se presente).
+                    const hasOverride = trigger.hasAttribute('data-ram-redirect');
+                    const target = trigger.getAttribute('data-ram-redirect') || trigger.getAttribute('href') || '';
+                    if (!target) {
+                        console.warn('[RAM] Gatilho de reward sem destino (href ou data-ram-redirect):', trigger);
+                        return;
+                    }
+                    // Modo "todos os botões": só intercepta links internos (mesmo domínio),
+                    // a menos que tenha um data-ram-redirect explícito.
+                    if (triggerScope === 'all_buttons' && !hasOverride && !isInternalUrl(target)) {
+                        return;
+                    }
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (rewardFlowStarted) return;
+
+                    trigger.classList.add('ram-reward-trigger-loading');
+                    showOverlay();
+                    startRewardFlow();
+                    proceedToReward(appendParams(target));
+                });
+            } else {
+                startRewardFlow();
+            }
+        })();
+        </script>
+        <script id="winup-ad-engine-js" src="https://de.credityup.com/wp-content/plugins/winup-ad-engine/assets/js/ad-engine.js?ver=1.3.0"></script>
+<script async data-wp-strategy="async" fetchpriority="low" id="comment-reply-js" src="https://de.credityup.com/wp-includes/js/comment-reply.min.js?ver=7.1.3"></script>
+<script id="jquery-bootstrap-js" src="https://de.credityup.com/wp-content/themes/hestia-pro/assets/bootstrap/js/bootstrap.min.js?ver=1.0.2"></script>
+<script id="jquery-ui-core-js-before">
+jQuery.uiBackCompat = true;
+//# sourceURL=jquery-ui-core-js-before
+</script>
+<script id="jquery-ui-core-js" src="https://de.credityup.com/wp-includes/js/jquery/ui/core.min.js?ver=1.14.2"></script>
+<script id="hestia_scripts-js-extra">
+var requestpost = {"ajaxurl":"https://de.credityup.com/wp-admin/admin-ajax.php","disable_autoslide":"","masonry":""};
+//# sourceURL=hestia_scripts-js-extra
+</script>
+<script id="hestia_scripts-js" src="https://de.credityup.com/wp-content/themes/hestia-pro/assets/js/script.min.js?ver=3.0.23"></script>
+<script id="wp-emoji-settings" type="application/json">
+{"baseUrl":"https://s.w.org/images/core/emoji/17.0.2/72x72/","ext":".png","svgUrl":"https://s.w.org/images/core/emoji/17.0.2/svg/","svgExt":".svg","source":{"concatemoji":"https://de.credityup.com/wp-includes/js/wp-emoji-release.min.js?ver=7.1.3"}}
+</script>
+<script type="module">
+/*! This file is auto-generated */
+var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof HTMLScriptElement))throw new Error("Element missing: "+e);const r=JSON.parse(t.text),s=(window._wpemojiSettings=r,"wpEmojiSettingsSupports"),o=["flag","emoji"];function i(e){try{var t={supportTests:e,timestamp:(new Date).valueOf()};sessionStorage.setItem(s,JSON.stringify(t))}catch(e){}}function c(e,t,n){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);t=new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data);e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(n,0,0);const r=new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data);return t.every((e,t)=>e===r[t])}function p(e,t){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);var n=e.getImageData(16,16,1,1);for(let e=0;e<n.data.length;e++)if(0!==n.data[e])return!1;return!0}function u(e,t,n,r){switch(t){case"flag":return n(e,"\ud83c\udff3\ufe0f\u200d\u26a7\ufe0f","\ud83c\udff3\ufe0f\u200b\u26a7\ufe0f")?!1:!n(e,"\ud83c\udde8\ud83c\uddf6","\ud83c\udde8\u200b\ud83c\uddf6")&&!n(e,"\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67\udb40\udc7f","\ud83c\udff4\u200b\udb40\udc67\u200b\udb40\udc62\u200b\udb40\udc65\u200b\udb40\udc6e\u200b\udb40\udc67\u200b\udb40\udc7f");case"emoji":return!r(e,"\ud83e\u1fac8")}return!1}function f(e,t,n,r){let a;const s=(a="undefined"!=typeof WorkerGlobalScope&&self instanceof WorkerGlobalScope?new OffscreenCanvas(300,150):document.createElement("canvas")).getContext("2d",{willReadFrequently:!0}),o=(s.textBaseline="top",s.font="600 32px Arial",{});return e.forEach(e=>{o[e]=t(s,e,n,r)}),o}function a(e){var t=document.createElement("script");t.src=e,t.defer=!0,document.head.appendChild(t)}r.supports={everything:!0,everythingExceptFlag:!0},new Promise(t=>{let n=function(){try{var e=JSON.parse(sessionStorage.getItem(s));if("object"==typeof e&&"number"==typeof e.timestamp&&(new Date).valueOf()<e.timestamp+604800&&"object"==typeof e.supportTests)return e.supportTests}catch(e){}return null}();if(!n){if("undefined"!=typeof Worker&&"undefined"!=typeof OffscreenCanvas&&"undefined"!=typeof URL&&URL.createObjectURL&&"undefined"!=typeof Blob)try{var e="postMessage("+f.toString()+"("+[JSON.stringify(o),u.toString(),c.toString(),p.toString()].join(",")+"));",r=new Blob([e],{type:"text/javascript"});const a=new Worker(URL.createObjectURL(r),{name:"wpTestEmojiSupports"});return void(a.onmessage=e=>{i(n=e.data),a.terminate(),t(n)})}catch(e){}i(n=f(o,u,c,p))}t(n)}).then(e=>{for(const n in e)r.supports[n]=e[n],r.supports.everything=r.supports.everything&&r.supports[n],"flag"!==n&&(r.supports.everythingExceptFlag=r.supports.everythingExceptFlag&&r.supports[n]);var t;r.supports.everythingExceptFlag=r.supports.everythingExceptFlag&&!r.supports.flag,r.supports.everything||((t=r.source||{}).concatemoji?a(t.concatemoji):t.wpemoji&&t.twemoji&&(a(t.twemoji),a(t.wpemoji)))});
+//# sourceURL=https://de.credityup.com/wp-includes/js/wp-emoji-loader.min.js
+</script>
+</body>
+</html>
+
+
+<!-- Page cached by LiteSpeed Cache 7.9.1 on 2026-10-15 15:04:02 -->

@@ -1,0 +1,11 @@
+HTTP/2 200 
+x-dns-prefetch-control: on
+content-type: text/html; charset=UTF-8
+link: <https://us.credityup.com/wp-json/>; rel="https://api.w.org/"
+link: <https://us.credityup.com/wp-json/wp/v2/pages/89>; rel="alternate"; title="JSON"; type="application/json"
+link: <https://us.credityup.com/?p=89>; rel=shortlink
+vary: Accept-Encoding
+x-litespeed-cache: hit
+date: Thu, 15 Oct 2026 17:06:12 GMT
+server: LiteSpeed
+

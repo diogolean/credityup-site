@@ -1,0 +1,60 @@
+c1-A.json score=40 FCP=3.4 s LCP=8.5 s TBT=390 ms CLS=0.225 SI=9.4 s TTFB=Root document took 640 ms bytes=Total size was 2,117 KiB err=
+  LCPel: <p style="text-align: left;">
+  CLS: <p style="text-align: left;"> 0.225
+  TBT: en.blovibe.com/lp08-hottest-new-casual-dating-apps 77ms | Unattributable 18ms | www.googletagmanager.com/gtag/js?id=G-G96DTLDQJV&c 192ms
+  RB: jquery.min.js?ver=3.7.1 29K, jquery-migrate.min.js?ver=3.4. 5K, style.min.css?ver=7.5.1 23K, style.min.css?ver=7.1.3 18K, single.min.css?ver=7.5.1 9K, fontawesome.css?ver=7.5.1 12K, widgets.min.css?ver=7.5.1 8K, skin.css?ver=7.5.1 2K, css?family=Roboto+Slab:100,100 1K, css?family=Roboto:100,100itali 3K
+c2-A.json score=49 FCP=2.1 s LCP=3.9 s TBT=1,370 ms CLS=0.089 SI=21.8 s TTFB=Root document took 1,010 ms bytes=Total size was 1,946 KiB err=
+  LCPel: <p>
+  CLS: <div class="main-content tie-col-md-12" role="main"> 0.028 | <div class="VIpgJd-ZVi9od-aZ2wEe-wOHMyf VIpgJd-ZVi9od-aZ2wEe 0.024
+  TBT: usa.udenze.com/conoce-personas-reales-cerca-de-ti- 62ms | translate.googleapis.com/_/translate_http/_/js/k=t 714ms | Unattributable 19ms
+  RB: jquery.min.js?ver=3.7.1 29K, style.min.css?ver=7.5.1 23K, single.min.css?ver=7.5.1 9K, widgets.min.css?ver=7.5.1 8K
+c3-A.json score=40 FCP=8.7 s LCP=10.4 s TBT=570 ms CLS=0.041 SI=14.7 s TTFB=Root document took 610 ms bytes=Total size was 1,562 KiB err=
+  LCPel: <h1 class="post-title entry-title">
+  CLS: <div class="entry-content entry clearfix"> 0.041
+  TBT: de.bellybat.com/lp05-best-dating-coaching-fur-mann 121ms | connect.facebook.net/en_US/fbevents.js 281ms | Unattributable 13ms
+  RB: fontawesome.css?ver=7.5.1 12K
+c4-A.json score=74 FCP=3.0 s LCP=4.0 s TBT=80 ms CLS=0.001 SI=8.0 s TTFB=Root document took 650 ms bytes=Total size was 655 KiB err=
+  LCPel: <p>
+  CLS: <h1 class="post-title entry-title"> 0.001
+  TBT: en.minutolivre.com/bc-02-meeting-women-online/ 32ms | Unattributable 59ms | www.googletagmanager.com/gtag/js?id=G-G96DTLDQJV&c 129ms
+  RB: style.min.css?ver=7.5.1 22K, wads.js?v=1 7K
+lp1-A.json score=44 FCP=7.2 s LCP=8.6 s TBT=510 ms CLS=0.023 SI=9.4 s TTFB=Root document took 650 ms bytes=Total size was 1,053 KiB err=
+  LCPel: <p class="wp-block-paragraph">
+  CLS: <div class="main  main-raised "> 0.023
+  TBT: us.credityup.com/best-easy-dating-apps-lp-01/ 26ms | Unattributable 35ms | www.googletagmanager.com/gtag/js?id=G-NEFTQCM6YF 192ms
+  RB: font-sizes.min.css?ver=3.3.4 1K, wads.js?v=1 7K
+lp1-B.json score=57 FCP=2.8 s LCP=4.5 s TBT=620 ms CLS=0.023 SI=7.5 s TTFB=Root document took 640 ms bytes=Total size was 1,043 KiB err=
+  LCPel: <p class="wp-block-paragraph">
+  CLS: <div class="main  main-raised "> 0.023
+  TBT: us.credityup.com/best-easy-dating-apps-lp-01/ 23ms | Unattributable 33ms | www.googletagmanager.com/gtag/js?id=G-G96DTLDQJV&c 188ms
+  RB: style.min.css?ver=3.3.4 22K, font-sizes.min.css?ver=3.3.4 1K
+lp2-A.json score=46 FCP=6.6 s LCP=7.0 s TBT=490 ms CLS=0 SI=8.7 s TTFB=Root document took 600 ms bytes=Total size was 1,054 KiB err=
+  LCPel: <p class="wp-block-paragraph">
+  CLS: <h1 class="hestia-title "> 0.000
+  TBT: us.credityup.com/instant-matchmaking-apps-lp-02/ 27ms | www.googletagmanager.com/gtag/js?id=G-NEFTQCM6YF 192ms | www.googletagmanager.com/gtag/js?id=G-G96DTLDQJV&c 179ms
+  RB: font-sizes.min.css?ver=3.3.4 1K, wads.js?v=1 7K
+lp2-B.json score=63 FCP=2.7 s LCP=3.5 s TBT=650 ms CLS=0 SI=7.3 s TTFB=Root document took 610 ms bytes=Total size was 1,044 KiB err=
+  LCPel: <p class="wp-block-paragraph">
+  CLS: <h1 class="hestia-title "> 0.000
+  TBT: us.credityup.com/instant-matchmaking-apps-lp-02/ 26ms | www.googletagmanager.com/gtag/js?id=G-G96DTLDQJV&c 218ms | Unattributable 36ms
+  RB: style.min.css?ver=3.3.4 22K, font-sizes.min.css?ver=3.3.4 1K
+lp3-A.json score=48 FCP=7.0 s LCP=12.1 s TBT=340 ms CLS=0.001 SI=9.9 s TTFB=Root document took 750 ms bytes=Total size was 933 KiB err=
+  LCPel: <div class="header-filter" style="background-image: url(&quot;https://de.credityup.com/wp-content/uploads/2026
+  CLS: <h1 class="hestia-title entry-title"> 0.001
+  TBT: de.credityup.com/apps-leichte-dates-unkomplizierte 23ms | www.googletagmanager.com/gtag/js?id=G-G96DTLDQJV&c 241ms | www.googletagmanager.com/gtm.js?id=GTM-573CZ7M5 255ms
+  RB: style.min.css?ver=3.0.23 21K, bootstrap.min.css?ver=1.0.2 11K, wads.js?v=1 7K
+lp3-B.json score=56 FCP=3.1 s LCP=8.3 s TBT=260 ms CLS=0.001 SI=9.0 s TTFB=Root document took 840 ms bytes=Total size was 923 KiB err=
+  LCPel: <div class="header-filter" style="background-image: url(&quot;https://de.credityup.com/wp-content/uploads/2026
+  CLS: <h1 class="hestia-title entry-title"> 0.001
+  TBT: de.credityup.com/apps-leichte-dates-unkomplizierte 23ms | www.googletagmanager.com/gtag/js?id=G-32D020LG1Q 199ms | www.googletagmanager.com/gtag/js?id=G-G96DTLDQJV&c 171ms
+  RB: style.min.css?ver=3.0.23 21K, bootstrap.min.css?ver=1.0.2 11K
+lp4-A.json score=50 FCP=3.9 s LCP=5.1 s TBT=650 ms CLS=0.001 SI=7.9 s TTFB=Root document took 620 ms bytes=Total size was 1,094 KiB err=
+  LCPel: <p class="wp-block-paragraph">
+  CLS: <h1 class="hestia-title "> 0.001
+  TBT: de.credityup.com/digitale-romanzen-liebe-finden-lp 44ms | www.googletagmanager.com/gtag/js?id=G-32D020LG1Q 210ms | connect.facebook.net/en_US/fbevents.js 206ms
+  RB: style.min.css?ver=3.0.23 21K, font-sizes.min.css?ver=3.0.23 1K, wads.js?v=1 7K
+lp4-B.json score=43 FCP=6.4 s LCP=8.5 s TBT=570 ms CLS=0.001 SI=9.2 s TTFB=Root document took 620 ms bytes=Total size was 1,084 KiB err=
+  LCPel: <p class="wp-block-paragraph">
+  CLS: <h1 class="hestia-title "> 0.001
+  TBT: de.credityup.com/digitale-romanzen-liebe-finden-lp 25ms | www.googletagmanager.com/gtag/js?id=G-32D020LG1Q 182ms | Unattributable 34ms
+  RB: font-sizes.min.css?ver=3.0.23 1K

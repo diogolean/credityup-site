@@ -1,0 +1,2218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+	<meta charset='UTF-8'><link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin />
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="profile" href="http://gmpg.org/xfn/11">
+		<title>Umgang mit digitaler Romantik: Finden Sie dauerhafte Bindungen &#8211; De credityup</title>
+<meta name='robots' content='max-image-preview:large' />
+<!-- Rewarded Ad Modal: trava dos blocos de conteúdo -->
+<script data-cfasync="false" data-no-optimize="1" data-no-defer="1" data-no-minify="1">
+(function (w, d) {
+    if (w.ramAdGate) return;
+    var CFG = {"protect":true,"mode":"reward_auto","maxWait":3000,"cdKey":"ram_reward_cd_reward_ebedd7a9088c7ce81caeb59e74251b42","cdMs":86400000,"navKey":"","urlContains":[],"version":"1.1.0"};
+    var DEBUG = false;
+    try { DEBUG = /[?&]ram_debug=1/.test(w.location.search); } catch (e) {}
+
+    var held = false, timer = null, leaveTimer = null, capTimer = null, bypass = 0;
+    var domReady = false, gptReady = false;
+    var callbacks = [], qDisplay = [], qRefresh = [], lastRefreshOpts;
+    var orig = { display: null, refresh: null }, pubads = null, log = [];
+
+    var gate = {
+        version: CFG.version,
+        mode: CFG.mode,
+        enabled: !!CFG.protect,
+        held: false,        // true = blocos de conteúdo segurados
+        reason: '',         // motivo do último hold/release
+        contentWon: false,  // true = o tempo máximo estourou e o conteúdo ficou com a pageview
+        wrapped: false      // true = display()/refresh() do GPT estão sendo adiados pela trava
+    };
+
+    function note(ev, extra) {
+        var t = 0;
+        try { t = Math.round(w.performance.now()); } catch (e) {}
+        log.push({ t: t, ev: ev, info: extra == null ? '' : String(extra) });
+        if (log.length > 80) log.shift();
+        if (DEBUG && w.console) w.console.log('[RAM gate]', t + 'ms', ev, extra == null ? '' : extra);
+    }
+
+    function fire(name, why) {
+        try { d.dispatchEvent(new CustomEvent(name, { detail: { reason: why || '' } })); } catch (e) {}
+    }
+
+    function isArray(v) { return Object.prototype.toString.call(v) === '[object Array]'; }
+
+    function elFor(a) {
+        try {
+            if (!a) return null;
+            if (typeof a === 'string') return d.getElementById(a);
+            if (a.nodeType === 1) return a;
+            if (typeof a.getSlotElementId === 'function') return d.getElementById(a.getSlotElementId());
+        } catch (e) {}
+        return null;
+    }
+
+    function keyFor(a) {
+        try {
+            if (typeof a === 'string') return a;
+            if (a && a.nodeType === 1) return a.id || a;
+            if (a && typeof a.getSlotElementId === 'function') return a.getSlotElementId();
+        } catch (e) {}
+        return a;
+    }
+
+    function slotFor(a) {
+        try {
+            if (a && typeof a.getSlotElementId === 'function') return a;
+            var k = keyFor(a), list = (pubads && pubads.getSlots) ? pubads.getSlots() : [];
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].getSlotElementId() === k) return list[i];
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    // "Dentro da página" = bloco com um elemento do site no DOM (banner no conteúdo).
+    // Rewarded / interstitial / âncora do GPT não têm elemento próprio antes de
+    // preencher, então passam direto e nunca são adiados.
+    function isInPage(a) {
+        if (!elFor(a)) return false;
+        var s = slotFor(a);
+        try { if (s && typeof s.getOutOfPage === 'function' && s.getOutOfPage()) return false; } catch (e) {}
+        return true;
+    }
+
+    function has(list, k) {
+        for (var i = 0; i < list.length; i++) if (list[i] === k) return true;
+        return false;
+    }
+
+    function install() {
+        gptReady = true;
+        armTimeout();
+        try {
+            var g = w.googletag;
+            if (gate.wrapped || !g || typeof g.display !== 'function') return;
+            pubads = typeof g.pubads === 'function' ? g.pubads() : null;
+
+            orig.display = g.display;
+            var heldDisplay = function (a) {
+                if (bypass || !held || !isInPage(a)) return orig.display.apply(g, arguments);
+                var k = keyFor(a);
+                for (var i = 0; i < qDisplay.length; i++) if (qDisplay[i].k === k) return;
+                qDisplay.push({ k: k, a: a });
+                note('display adiado', k);
+            };
+            g.display = heldDisplay;
+
+            if (pubads && typeof pubads.refresh === 'function') {
+                orig.refresh = pubads.refresh;
+                pubads.refresh = function (slots, opts) {
+                    if (bypass || !held) return orig.refresh.apply(pubads, arguments);
+                    var list = slots == null
+                        ? (pubads.getSlots ? pubads.getSlots() : [])
+                        : (isArray(slots) ? slots : [slots]);
+                    var pass = [];
+                    for (var i = 0; i < list.length; i++) {
+                        if (isInPage(list[i])) {
+                            if (!has(qRefresh, list[i])) qRefresh.push(list[i]);
+                            note('refresh adiado', keyFor(list[i]));
+                        } else {
+                            pass.push(list[i]);
+                        }
+                    }
+                    lastRefreshOpts = opts;
+                    if (pass.length) return orig.refresh.call(pubads, pass, opts);
+                };
+            }
+
+            gate.wrapped = (g.display === heldDisplay);
+            note(gate.wrapped ? 'trava instalada no GPT' : 'GPT nao permitiu a trava (so integracao nativa)');
+        } catch (e) {
+            note('erro ao instalar a trava', e);
+        }
+    }
+
+    // Executa, uma única vez e na ordem original, o que foi adiado.
+    function flush() {
+        var dq = qDisplay, rq = qRefresh, shown = [], rest = [], i;
+        qDisplay = []; qRefresh = [];
+        for (i = 0; i < dq.length; i++) {
+            shown.push(dq[i].k);
+            try { orig.display.call(w.googletag, dq[i].a); } catch (e) { note('erro no display adiado', e); }
+        }
+        // Um bloco cujo display() acabou de rodar já foi requisitado: não repetir com refresh().
+        for (i = 0; i < rq.length; i++) if (!has(shown, keyFor(rq[i]))) rest.push(rq[i]);
+        if (rest.length && orig.refresh) {
+            try { orig.refresh.call(pubads, rest, lastRefreshOpts); } catch (e) { note('erro no refresh adiado', e); }
+        }
+        if (dq.length || rest.length) note('conteudo liberado', dq.length + ' display, ' + rest.length + ' refresh');
+    }
+
+    function overlayVisible() {
+        try {
+            var m = d.getElementById('masterRewarded');
+            if (m && /(^|\s)active(\s|$)/.test(m.className)) return true;
+            var q = d.getElementById('ramQuizOverlay');
+            if (q && w.getComputedStyle(q).display !== 'none') return true;
+        } catch (e) {}
+        return false;
+    }
+
+    function clearTimers() {
+        if (timer) { clearTimeout(timer); timer = null; }
+        if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; }
+        if (capTimer) { clearTimeout(capTimer); capTimer = null; }
+    }
+
+    // Tempo máximo de espera pelo rewarded. Só começa a contar quando o DOM está pronto E o GPT
+    // carregou — antes disso nenhum anúncio (nem o rewarded) poderia ter sido pedido, então não
+    // faria sentido "desistir" do rewarded (ex.: sites que atrasam os scripts até a 1ª interação).
+    function armTimeout() {
+        if (!held || timer || gate.reason !== 'load' || !domReady || !gptReady) return;
+        timer = setTimeout(function () { timer = null; gate.release('timeout'); }, CFG.maxWait);
+    }
+
+    function sraOn() {
+        try { if (pubads && typeof pubads.isSRA === 'function') return !!pubads.isSRA(); } catch (e) {}
+        return null;
+    }
+
+    /**
+     * Segura os blocos de conteúdo. Chamado quando o popup/quiz/rewarded passa a
+     * cobrir a página. Sem tempo máximo: fica segurado até release().
+     */
+    gate.hold = function (why) {
+        if (!gate.enabled) return false;
+        clearTimers();
+        gate.reason = why || '';
+        if (!held) {
+            held = gate.held = true;
+            note('hold', why);
+            fire('ram:ads-hold', why);
+        }
+        return true;
+    };
+
+    /**
+     * Libera os blocos de conteúdo (popup fechado sem navegação, sem anúncio, cooldown...).
+     */
+    gate.release = function (why) {
+        clearTimers();
+        if (!held) return false;
+        held = gate.held = false;
+        gate.reason = why || '';
+        if (why === 'timeout') gate.contentWon = true;
+        note('release', why);
+        flush();
+        var cbs = callbacks; callbacks = [];
+        for (var i = 0; i < cbs.length; i++) { try { cbs[i](gate.reason); } catch (e) {} }
+        fire('ram:ads-release', why);
+        return true;
+    };
+
+    /**
+     * A página vai navegar (redirect após o rewarded): mantém a trava para não
+     * comprar um bloco segundos antes de descarregar a página. Se a navegação não
+     * acontecer (download, tel:, bloqueio), solta depois de `ms`.
+     */
+    gate.leaving = function (ms) {
+        if (!held) return;
+        if (leaveTimer) clearTimeout(leaveTimer);
+        leaveTimer = setTimeout(function () { leaveTimer = null; gate.release('nav-timeout'); }, ms || 6000);
+    };
+
+    /** Para o carregador de anúncios do site: roda cb quando o conteúdo estiver liberado. */
+    gate.whenReleased = function (cb) {
+        if (typeof cb !== 'function') return;
+        if (!held) { try { cb(gate.reason); } catch (e) {} return; }
+        callbacks.push(cb);
+    };
+
+    /** Executa fn sem passar pela trava (usado pelo próprio slot rewarded). */
+    gate.passthrough = function (fn) {
+        bypass++;
+        try { return fn(); } finally { bypass--; }
+    };
+
+    /** Diagnóstico: ramAdGate.debug() no console, ou abra a página com ?ram_debug=1 */
+    gate.debug = function () {
+        return {
+            mode: gate.mode, enabled: gate.enabled, held: held, reason: gate.reason,
+            contentWon: gate.contentWon, wrapped: gate.wrapped, sra: sraOn(),
+            displayAdiados: qDisplay.length, refreshAdiados: qRefresh.length, log: log.slice()
+        };
+    };
+
+    function onCooldown() {
+        try {
+            return CFG.cdMs > 0 && !!CFG.cdKey &&
+                (Date.now() - parseInt(w.localStorage.getItem(CFG.cdKey) || '0', 10)) < CFG.cdMs;
+        } catch (e) { return false; }
+    }
+
+    // O popup vai cobrir a página logo no carregamento?
+    function coversPageAtLoad() {
+        if (CFG.mode === 'reward_auto') {
+            if (onCooldown()) return false;
+            if (CFG.urlContains.length) {
+                var hit = false;
+                for (var i = 0; i < CFG.urlContains.length; i++) {
+                    if (w.location.href.indexOf(CFG.urlContains[i]) !== -1) { hit = true; break; }
+                }
+                if (!hit) return false;
+            }
+            return true;
+        }
+        if (CFG.mode === 'quiz_modal') {
+            var progress = false;
+            try { progress = new URLSearchParams(w.location.search).has('ram_q'); } catch (e) {}
+            try { progress = progress || !!w.sessionStorage.getItem(CFG.navKey); } catch (e) {}
+            return !(onCooldown() && !progress);
+        }
+        return false; // reward_click e quiz_inline só cobrem a página depois de um clique
+    }
+
+    w.ramAdGate = gate;
+    if (!gate.enabled) { note('protecao desligada'); return; }
+
+    w.googletag = w.googletag || { cmd: [] };
+    w.googletag.cmd = w.googletag.cmd || [];
+    // Entra na FRENTE da fila enquanto o GPT ainda não carregou: assim a trava é instalada antes
+    // do código de anúncios do site, não importa a ordem dos <script> na página. Se o GPT já
+    // carregou, cmd.push executa na hora.
+    if (isArray(w.googletag.cmd)) w.googletag.cmd.unshift(install);
+    else w.googletag.cmd.push(install);
+
+    if (coversPageAtLoad()) {
+        held = gate.held = true;
+        gate.reason = 'load';
+        note('hold', 'load');
+        fire('ram:ads-hold', 'load');
+        var onDom = function () {
+            domReady = true;
+            armTimeout();
+            // GPT nunca carregou (bloqueador, rede): não há anúncio do GPT pra proteger. Solta para
+            // quem usa a integração nativa (whenReleased) não ficar esperando pra sempre.
+            capTimer = setTimeout(function () {
+                capTimer = null;
+                if (held && gate.reason === 'load' && !gptReady) gate.release('gpt-ausente');
+            }, 15000);
+        };
+        if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', onDom);
+        else onDom();
+    }
+
+    // Página restaurada pelo botão Voltar (bfcache) com a trava ainda ativa e sem popup: solta.
+    w.addEventListener('pageshow', function (e) {
+        if (e.persisted && held && !overlayVisible()) gate.release('bfcache');
+    });
+})(window, document);
+</script>
+        
+<!-- Google Tag Manager for WordPress by gtm4wp.com -->
+<script data-cfasync="false" data-pagespeed-no-defer>
+	var gtm4wp_datalayer_name = "dataLayer";
+	var dataLayer = dataLayer || [];
+	(function(){dataLayer.push(arguments);})('set', 'developer_id.dNGJiYT', true);
+</script>
+<!-- End Google Tag Manager for WordPress by gtm4wp.com -->
+<script src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"></script>
+<script>window.wadsConfig = {
+  network: "23340104016",
+  domain: "de.credityup.com"
+};</script>
+<script src="https://api.winup.network/api/v1/public/kvp/wads.js?v=1"></script>
+<winupads tag="interstitial"></winupads>
+<link rel='dns-prefetch' href='//fonts.googleapis.com' />
+<link rel="alternate" type="application/rss+xml" title="Feed para De credityup &raquo;" href="https://de.credityup.com/feed/" />
+<link rel="alternate" type="application/rss+xml" title="Feed de comentários para De credityup &raquo;" href="https://de.credityup.com/comments/feed/" />
+<link rel="alternate" title="oEmbed (JSON)" type="application/json+oembed" href="https://de.credityup.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fde.credityup.com%2Fdigitale-romanzen-liebe-finden-lp-01%2F" />
+<link rel="alternate" title="oEmbed (XML)" type="text/xml+oembed" href="https://de.credityup.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fde.credityup.com%2Fdigitale-romanzen-liebe-finden-lp-01%2F&#038;format=xml" />
+<style id="wp-img-auto-sizes-contain-inline-css">
+img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
+/*# sourceURL=wp-img-auto-sizes-contain-inline-css */
+</style>
+<script>WebFontConfig={google:{families:["Roboto:300,400,500,700:latin,latin-ext","Roboto Slab:400,700:latin,latin-ext\u0026display=swap"]}};if ( typeof WebFont === "object" && typeof WebFont.load === "function" ) { WebFont.load( WebFontConfig ); }</script><script data-optimized="1" src="https://de.credityup.com/wp-content/plugins/litespeed-cache/assets/js/webfontloader.min.js"></script>
+<style id="wp-emoji-styles-inline-css">
+
+	img.wp-smiley, img.emoji {
+		display: inline !important;
+		border: none !important;
+		box-shadow: none !important;
+		height: 1em !important;
+		width: 1em !important;
+		margin: 0 0.07em !important;
+		vertical-align: -0.1em !important;
+		background: none !important;
+		padding: 0 !important;
+	}
+/*# sourceURL=wp-emoji-styles-inline-css */
+</style>
+<style id="wp-block-library-inline-css">
+:root{--wp-block-synced-color:#7a00df;--wp-block-synced-color--rgb:122,0,223;--wp-bound-block-color:var(--wp-block-synced-color);--wp-editor-canvas-background:#ddd;--wp-admin-theme-color:#007cba;--wp-admin-theme-color--rgb:0,124,186;--wp-admin-theme-color-darker-10:#006ba1;--wp-admin-theme-color-darker-10--rgb:0,107,160.5;--wp-admin-theme-color-darker-20:#005a87;--wp-admin-theme-color-darker-20--rgb:0,90,135;--wp-admin-border-width-focus:2px}@media (min-resolution:192dpi){:root{--wp-admin-border-width-focus:1.5px}}.wp-element-button{cursor:pointer}:root .has-very-light-gray-background-color{background-color:#eee}:root .has-very-dark-gray-background-color{background-color:#313131}:root .has-very-light-gray-color{color:#eee}:root .has-very-dark-gray-color{color:#313131}:root .has-vivid-green-cyan-to-vivid-cyan-blue-gradient-background{background:linear-gradient(135deg,#00d084,#0693e3)}:root .has-purple-crush-gradient-background{background:linear-gradient(135deg,#34e2e4,#4721fb 50%,#ab1dfe)}:root .has-hazy-dawn-gradient-background{background:linear-gradient(135deg,#faaca8,#dad0ec)}:root .has-subdued-olive-gradient-background{background:linear-gradient(135deg,#fafae1,#67a671)}:root .has-atomic-cream-gradient-background{background:linear-gradient(135deg,#fdd79a,#004a59)}:root .has-nightshade-gradient-background{background:linear-gradient(135deg,#330968,#31cdcf)}:root .has-midnight-gradient-background{background:linear-gradient(135deg,#020381,#2874fc)}:root{--wp--preset--font-size--normal:16px;--wp--preset--font-size--huge:42px}.has-regular-font-size{font-size:1em}.has-larger-font-size{font-size:2.625em}.has-normal-font-size{font-size:var(--wp--preset--font-size--normal)}.has-huge-font-size{font-size:var(--wp--preset--font-size--huge)}:root .has-text-align-center{text-align:center}:root .has-text-align-left{text-align:left}:root .has-text-align-right{text-align:right}.has-fit-text{white-space:nowrap!important}#end-resizable-editor-section{display:none}.aligncenter{clear:both}.items-justified-left{justify-content:flex-start}.items-justified-center{justify-content:center}.items-justified-right{justify-content:flex-end}.items-justified-space-between{justify-content:space-between}.screen-reader-text{word-wrap:normal!important;border:0;clip-path:inset(50%);height:1px;margin:-1px;overflow:hidden;padding:0;position:absolute;width:1px;word-break:normal!important}.screen-reader-text:focus{background-color:#ddd;clip-path:none;color:#444;display:block;font-size:1em;height:auto;left:5px;line-height:normal;padding:15px 23px 14px;text-decoration:none;top:5px;width:auto;z-index:100000}html :where(.has-border-color){border-style:solid}html :where([style^=border-color],[style*=";border-color"],[style*="; border-color"]){border-style:solid}html :where([style^=border-top-color],[style*=";border-top-color"],[style*="; border-top-color"]){border-top-style:solid}html :where([style^=border-right-color],[style*=";border-right-color"],[style*="; border-right-color"]){border-right-style:solid}html :where([style^=border-bottom-color],[style*=";border-bottom-color"],[style*="; border-bottom-color"]){border-bottom-style:solid}html :where([style^=border-left-color],[style*=";border-left-color"],[style*="; border-left-color"]){border-left-style:solid}html :where([style^=border-width],[style*=";border-width"],[style*="; border-width"]){border-style:solid}html :where([style^=border-top-width],[style*=";border-top-width"],[style*="; border-top-width"]){border-top-style:solid}html :where([style^=border-right-width],[style*=";border-right-width"],[style*="; border-right-width"]){border-right-style:solid}html :where([style^=border-bottom-width],[style*=";border-bottom-width"],[style*="; border-bottom-width"]){border-bottom-style:solid}html :where([style^=border-left-width],[style*=";border-left-width"],[style*="; border-left-width"]){border-left-style:solid}html :where(img[class*=wp-image-]){height:auto;max-width:100%}:where(figure){margin:0 0 1em}html :where(.is-position-sticky){--wp-admin--admin-bar--position-offset:var(--wp-admin--admin-bar--height,0px)}@media screen and (max-width:600px){html :where(.is-position-sticky){--wp-admin--admin-bar--position-offset:0px}}
+
+/*# sourceURL=/wp-includes/css/dist/block-library/common.min.css */
+</style>
+<style id="wp-block-heading-inline-css">
+h1:where(.wp-block-heading).has-background,h2:where(.wp-block-heading).has-background,h3:where(.wp-block-heading).has-background,h4:where(.wp-block-heading).has-background,h5:where(.wp-block-heading).has-background,h6:where(.wp-block-heading).has-background{padding:1.25em 2.375em}h1.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h1.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]),h2.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h2.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]),h3.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h3.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]),h4.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h4.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]),h5.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h5.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]),h6.has-text-align-left[style*=writing-mode]:where([style*=vertical-lr]),h6.has-text-align-right[style*=writing-mode]:where([style*=vertical-rl]){rotate:180deg}
+/*# sourceURL=https://de.credityup.com/wp-includes/blocks/heading/style.min.css */
+</style>
+<style id="wp-block-paragraph-inline-css">
+.is-small-text{font-size:.875em}.is-regular-text{font-size:1em}.is-large-text{font-size:2.25em}.is-larger-text{font-size:3em}.has-drop-cap:not(:focus):first-letter{float:left;font-size:8.4em;font-style:normal;font-weight:100;line-height:.68;margin:.05em .1em 0 0;text-transform:uppercase}body.rtl .has-drop-cap:not(:focus):first-letter{float:none;margin-left:.1em}p.has-drop-cap.has-background{overflow:hidden}:root :where(p.has-background){padding:1.25em 2.375em}:where(p.has-text-color:not(.has-link-color)) a{color:inherit}p.has-text-align-left[style*="writing-mode:vertical-lr"],p.has-text-align-right[style*="writing-mode:vertical-rl"]{rotate:180deg}
+/*# sourceURL=https://de.credityup.com/wp-includes/blocks/paragraph/style.min.css */
+</style>
+
+<style id="classic-theme-styles-inline-css">
+/*! This file is auto-generated */
+.wp-block-button__link{color:#fff;background-color:#32373c;border-radius:9999px;box-shadow:none;text-decoration:none;padding:calc(.667em + 2px) calc(1.333em + 2px);font-size:1.125em}.wp-block-file__button{background:#32373c;color:#fff;text-decoration:none}
+/*# sourceURL=/wp-includes/css/classic-themes.min.css */
+</style>
+
+<style id="global-styles-inline-css">
+:root{--wp--preset--aspect-ratio--square: 1;--wp--preset--aspect-ratio--4-3: 4/3;--wp--preset--aspect-ratio--3-4: 3/4;--wp--preset--aspect-ratio--3-2: 3/2;--wp--preset--aspect-ratio--2-3: 2/3;--wp--preset--aspect-ratio--16-9: 16/9;--wp--preset--aspect-ratio--9-16: 9/16;--wp--preset--color--black: #000000;--wp--preset--color--cyan-bluish-gray: #abb8c3;--wp--preset--color--white: #ffffff;--wp--preset--color--pale-pink: #f78da7;--wp--preset--color--vivid-red: #cf2e2e;--wp--preset--color--luminous-vivid-orange: #ff6900;--wp--preset--color--luminous-vivid-amber: #fcb900;--wp--preset--color--light-green-cyan: #7bdcb5;--wp--preset--color--vivid-green-cyan: #00d084;--wp--preset--color--pale-cyan-blue: #8ed1fc;--wp--preset--color--vivid-cyan-blue: #0693e3;--wp--preset--color--vivid-purple: #9b51e0;--wp--preset--color--accent: #e91e63;--wp--preset--color--secondary: #2d3359;--wp--preset--color--background-color: #E5E5E5;--wp--preset--color--header-gradient: #a81d84;--wp--preset--color--body-color: #999999;--wp--preset--color--header-overlay-color: rgba(0,0,0,0.5);--wp--preset--color--header-text-color: #fffffe;--wp--preset--color--navbar-background: #fffffd;--wp--preset--color--navbar-text-color: #555555;--wp--preset--color--navbar-text-color-hover: #e91e63;--wp--preset--color--navbar-transparent-text-color: #fffffc;--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple: linear-gradient(135deg,rgb(6,147,227) 0%,rgb(155,81,224) 100%);--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan: linear-gradient(135deg,rgb(122,220,180) 0%,rgb(0,208,130) 100%);--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange: linear-gradient(135deg,rgb(252,185,0) 0%,rgb(255,105,0) 100%);--wp--preset--gradient--luminous-vivid-orange-to-vivid-red: linear-gradient(135deg,rgb(255,105,0) 0%,rgb(207,46,46) 100%);--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray: linear-gradient(135deg,rgb(238,238,238) 0%,rgb(169,184,195) 100%);--wp--preset--gradient--cool-to-warm-spectrum: linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%);--wp--preset--gradient--blush-light-purple: linear-gradient(135deg,rgb(255,206,236) 0%,rgb(152,150,240) 100%);--wp--preset--gradient--blush-bordeaux: linear-gradient(135deg,rgb(254,205,165) 0%,rgb(254,45,45) 50%,rgb(107,0,62) 100%);--wp--preset--gradient--luminous-dusk: linear-gradient(135deg,rgb(255,203,112) 0%,rgb(199,81,192) 50%,rgb(65,88,208) 100%);--wp--preset--gradient--pale-ocean: linear-gradient(135deg,rgb(255,245,203) 0%,rgb(182,227,212) 50%,rgb(51,167,181) 100%);--wp--preset--gradient--electric-grass: linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%);--wp--preset--gradient--midnight: linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%);--wp--preset--font-size--small: 13px;--wp--preset--font-size--medium: 20px;--wp--preset--font-size--large: 36px;--wp--preset--font-size--x-large: 42px;--wp--preset--spacing--20: 0.44rem;--wp--preset--spacing--30: 0.67rem;--wp--preset--spacing--40: 1rem;--wp--preset--spacing--50: 1.5rem;--wp--preset--spacing--60: 2.25rem;--wp--preset--spacing--70: 3.38rem;--wp--preset--spacing--80: 5.06rem;--wp--preset--shadow--natural: 6px 6px 9px rgba(0, 0, 0, 0.2);--wp--preset--shadow--deep: 12px 12px 50px rgba(0, 0, 0, 0.4);--wp--preset--shadow--sharp: 6px 6px 0px rgba(0, 0, 0, 0.2);--wp--preset--shadow--outlined: 6px 6px 0px -3px rgb(255, 255, 255), 6px 6px rgb(0, 0, 0);--wp--preset--shadow--crisp: 6px 6px 0px rgb(0, 0, 0);}.wp-block-button{--wp--preset--dimension--25: 25%;--wp--preset--dimension--50: 50%;--wp--preset--dimension--75: 75%;--wp--preset--dimension--100: 100%;}:where(body) { margin: 0; }:where(.is-layout-flex){gap: 0.5em;}:where(.is-layout-grid){gap: 0.5em;}body .is-layout-flex{display: flex;}.is-layout-flex{flex-wrap: wrap;align-items: center;}.is-layout-flex > :is(*, div){margin: 0;}body .is-layout-grid{display: grid;}.is-layout-grid > :is(*, div){margin: 0;}body{padding-top: 0px;padding-right: 0px;padding-bottom: 0px;padding-left: 0px;}:root :where(.wp-element-button, .wp-block-button__link){background-color: #32373c;border-width: 0;color: #fff;font-family: inherit;font-size: inherit;font-style: inherit;font-weight: inherit;letter-spacing: inherit;line-height: inherit;padding-top: calc(0.667em + 2px);padding-right: calc(1.333em + 2px);padding-bottom: calc(0.667em + 2px);padding-left: calc(1.333em + 2px);text-decoration: none;text-transform: inherit;}.has-black-color{color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-color{color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-color{color: var(--wp--preset--color--white) !important;}.has-pale-pink-color{color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-color{color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-color{color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-color{color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-color{color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-color{color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-color{color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-color{color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-color{color: var(--wp--preset--color--vivid-purple) !important;}.has-accent-color{color: var(--wp--preset--color--accent) !important;}.has-secondary-color{color: var(--wp--preset--color--secondary) !important;}.has-background-color-color{color: var(--wp--preset--color--background-color) !important;}.has-header-gradient-color{color: var(--wp--preset--color--header-gradient) !important;}.has-body-color-color{color: var(--wp--preset--color--body-color) !important;}.has-header-overlay-color-color{color: var(--wp--preset--color--header-overlay-color) !important;}.has-header-text-color-color{color: var(--wp--preset--color--header-text-color) !important;}.has-navbar-background-color{color: var(--wp--preset--color--navbar-background) !important;}.has-navbar-text-color-color{color: var(--wp--preset--color--navbar-text-color) !important;}.has-navbar-text-color-hover-color{color: var(--wp--preset--color--navbar-text-color-hover) !important;}.has-navbar-transparent-text-color-color{color: var(--wp--preset--color--navbar-transparent-text-color) !important;}.has-black-background-color{background-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-background-color{background-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-background-color{background-color: var(--wp--preset--color--white) !important;}.has-pale-pink-background-color{background-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-background-color{background-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-background-color{background-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-background-color{background-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-background-color{background-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-background-color{background-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-background-color{background-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-background-color{background-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-background-color{background-color: var(--wp--preset--color--vivid-purple) !important;}.has-accent-background-color{background-color: var(--wp--preset--color--accent) !important;}.has-secondary-background-color{background-color: var(--wp--preset--color--secondary) !important;}.has-background-color-background-color{background-color: var(--wp--preset--color--background-color) !important;}.has-header-gradient-background-color{background-color: var(--wp--preset--color--header-gradient) !important;}.has-body-color-background-color{background-color: var(--wp--preset--color--body-color) !important;}.has-header-overlay-color-background-color{background-color: var(--wp--preset--color--header-overlay-color) !important;}.has-header-text-color-background-color{background-color: var(--wp--preset--color--header-text-color) !important;}.has-navbar-background-background-color{background-color: var(--wp--preset--color--navbar-background) !important;}.has-navbar-text-color-background-color{background-color: var(--wp--preset--color--navbar-text-color) !important;}.has-navbar-text-color-hover-background-color{background-color: var(--wp--preset--color--navbar-text-color-hover) !important;}.has-navbar-transparent-text-color-background-color{background-color: var(--wp--preset--color--navbar-transparent-text-color) !important;}.has-black-border-color{border-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-border-color{border-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-border-color{border-color: var(--wp--preset--color--white) !important;}.has-pale-pink-border-color{border-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-border-color{border-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-border-color{border-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-border-color{border-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-border-color{border-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-border-color{border-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-border-color{border-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-border-color{border-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-border-color{border-color: var(--wp--preset--color--vivid-purple) !important;}.has-accent-border-color{border-color: var(--wp--preset--color--accent) !important;}.has-secondary-border-color{border-color: var(--wp--preset--color--secondary) !important;}.has-background-color-border-color{border-color: var(--wp--preset--color--background-color) !important;}.has-header-gradient-border-color{border-color: var(--wp--preset--color--header-gradient) !important;}.has-body-color-border-color{border-color: var(--wp--preset--color--body-color) !important;}.has-header-overlay-color-border-color{border-color: var(--wp--preset--color--header-overlay-color) !important;}.has-header-text-color-border-color{border-color: var(--wp--preset--color--header-text-color) !important;}.has-navbar-background-border-color{border-color: var(--wp--preset--color--navbar-background) !important;}.has-navbar-text-color-border-color{border-color: var(--wp--preset--color--navbar-text-color) !important;}.has-navbar-text-color-hover-border-color{border-color: var(--wp--preset--color--navbar-text-color-hover) !important;}.has-navbar-transparent-text-color-border-color{border-color: var(--wp--preset--color--navbar-transparent-text-color) !important;}.has-vivid-cyan-blue-to-vivid-purple-gradient-background{background: var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple) !important;}.has-light-green-cyan-to-vivid-green-cyan-gradient-background{background: var(--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan) !important;}.has-luminous-vivid-amber-to-luminous-vivid-orange-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange) !important;}.has-luminous-vivid-orange-to-vivid-red-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-orange-to-vivid-red) !important;}.has-very-light-gray-to-cyan-bluish-gray-gradient-background{background: var(--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray) !important;}.has-cool-to-warm-spectrum-gradient-background{background: var(--wp--preset--gradient--cool-to-warm-spectrum) !important;}.has-blush-light-purple-gradient-background{background: var(--wp--preset--gradient--blush-light-purple) !important;}.has-blush-bordeaux-gradient-background{background: var(--wp--preset--gradient--blush-bordeaux) !important;}.has-luminous-dusk-gradient-background{background: var(--wp--preset--gradient--luminous-dusk) !important;}.has-pale-ocean-gradient-background{background: var(--wp--preset--gradient--pale-ocean) !important;}.has-electric-grass-gradient-background{background: var(--wp--preset--gradient--electric-grass) !important;}.has-midnight-gradient-background{background: var(--wp--preset--gradient--midnight) !important;}.has-small-font-size{font-size: var(--wp--preset--font-size--small) !important;}.has-medium-font-size{font-size: var(--wp--preset--font-size--medium) !important;}.has-large-font-size{font-size: var(--wp--preset--font-size--large) !important;}.has-x-large-font-size{font-size: var(--wp--preset--font-size--x-large) !important;}
+/*# sourceURL=global-styles-inline-css */
+</style>
+
+<link rel='stylesheet' id='bootstrap-css' href='https://de.credityup.com/wp-content/themes/hestia-pro/assets/bootstrap/css/bootstrap.min.css?ver=1.0.2' media='all' />
+<link rel='stylesheet' id='hestia-font-sizes-css' href='https://de.credityup.com/wp-content/themes/hestia-pro/assets/css/font-sizes.min.css?ver=3.0.23' media='all' />
+<link rel='stylesheet' id='hestia_style-css' href='https://de.credityup.com/wp-content/themes/hestia-pro/style.min.css?ver=3.0.23' media='all' />
+<style id="hestia_style-inline-css">
+.hestia-top-bar, .hestia-top-bar .widget.widget_shopping_cart .cart_list {
+			background-color: #363537
+		}
+		.hestia-top-bar .widget .label-floating input[type=search]:-webkit-autofill {
+			-webkit-box-shadow: inset 0 0 0px 9999px #363537
+		}.hestia-top-bar, .hestia-top-bar .widget .label-floating input[type=search], .hestia-top-bar .widget.widget_search form.form-group:before, .hestia-top-bar .widget.widget_product_search form.form-group:before, .hestia-top-bar .widget.widget_shopping_cart:before {
+			color: #ffffff
+		} 
+		.hestia-top-bar .widget .label-floating input[type=search]{
+			-webkit-text-fill-color:#ffffff !important 
+		}
+		.hestia-top-bar div.widget.widget_shopping_cart:before, .hestia-top-bar .widget.widget_product_search form.form-group:before, .hestia-top-bar .widget.widget_search form.form-group:before{
+			background-color: #ffffff
+		}.hestia-top-bar a, .hestia-top-bar .top-bar-nav li a {
+			color: #ffffff
+		}
+		.hestia-top-bar ul li a[href*="mailto:"]:before, .hestia-top-bar ul li a[href*="tel:"]:before{
+			background-color: #ffffff
+		}
+		.hestia-top-bar a:hover, .hestia-top-bar .top-bar-nav li a:hover {
+			color: #eeeeee
+		}
+		.hestia-top-bar ul li:hover a[href*="mailto:"]:before, .hestia-top-bar ul li:hover a[href*="tel:"]:before{
+			background-color: #eeeeee
+		}
+		
+@media (min-width: 769px){
+			.page-header.header-small .hestia-title,
+			.page-header.header-small .title,
+			h1.hestia-title.title-in-content,
+			.main article.section .has-title-font-size {
+				font-size: 42px;
+			}}
+
+		a,
+		.navbar .dropdown-menu li:hover > a,
+		.navbar .dropdown-menu li:focus > a,
+		.navbar .dropdown-menu li:active > a,
+		.navbar .navbar-nav > li .dropdown-menu li:hover > a,
+		body:not(.home) .navbar-default .navbar-nav > .active:not(.btn) > a,
+		body:not(.home) .navbar-default .navbar-nav > .active:not(.btn) > a:hover,
+		body:not(.home) .navbar-default .navbar-nav > .active:not(.btn) > a:focus,
+		a:hover,
+		.card-blog a.moretag:hover,
+		.card-blog a.more-link:hover,
+		.widget a:hover,
+		.has-text-color.has-accent-color,
+		p.has-text-color a {
+		    color:#e91e63;
+		}
+		
+		.svg-text-color{
+			fill:#e91e63;
+		}
+		
+		.pagination span.current, .pagination span.current:focus, .pagination span.current:hover {
+			border-color:#e91e63
+		}
+		
+		button,
+		button:hover,
+		.woocommerce .track_order button[type="submit"],
+		.woocommerce .track_order button[type="submit"]:hover,
+		div.wpforms-container .wpforms-form button[type=submit].wpforms-submit,
+		div.wpforms-container .wpforms-form button[type=submit].wpforms-submit:hover,
+		input[type="button"],
+		input[type="button"]:hover,
+		input[type="submit"],
+		input[type="submit"]:hover,
+		input#searchsubmit,
+		.pagination span.current,
+		.pagination span.current:focus,
+		.pagination span.current:hover,
+		.btn.btn-primary,
+		.btn.btn-primary:link,
+		.btn.btn-primary:hover,
+		.btn.btn-primary:focus,
+		.btn.btn-primary:active,
+		.btn.btn-primary.active,
+		.btn.btn-primary.active:focus,
+		.btn.btn-primary.active:hover,
+		.btn.btn-primary:active:hover,
+		.btn.btn-primary:active:focus,
+		.btn.btn-primary:active:hover,
+		.hestia-sidebar-open.btn.btn-rose,
+		.hestia-sidebar-close.btn.btn-rose,
+		.hestia-sidebar-open.btn.btn-rose:hover,
+		.hestia-sidebar-close.btn.btn-rose:hover,
+		.hestia-sidebar-open.btn.btn-rose:focus,
+		.hestia-sidebar-close.btn.btn-rose:focus,
+		.label.label-primary,
+		.hestia-work .portfolio-item:nth-child(6n+1) .label,
+		.nav-cart .nav-cart-content .widget .buttons .button,
+		.has-accent-background-color[class*="has-background"] {
+		    background-color: #e91e63;
+		}
+		
+		@media (max-width: 768px) {
+	
+			.navbar-default .navbar-nav>li>a:hover,
+			.navbar-default .navbar-nav>li>a:focus,
+			.navbar .navbar-nav .dropdown .dropdown-menu li a:hover,
+			.navbar .navbar-nav .dropdown .dropdown-menu li a:focus,
+			.navbar button.navbar-toggle:hover,
+			.navbar .navbar-nav li:hover > a i {
+			    color: #e91e63;
+			}
+		}
+		
+		body:not(.woocommerce-page) button:not([class^="fl-"]):not(.hestia-scroll-to-top):not(.navbar-toggle):not(.close),
+		body:not(.woocommerce-page) .button:not([class^="fl-"]):not(hestia-scroll-to-top):not(.navbar-toggle):not(.add_to_cart_button):not(.product_type_grouped):not(.product_type_external),
+		div.wpforms-container .wpforms-form button[type=submit].wpforms-submit,
+		input[type="submit"],
+		input[type="button"],
+		.btn.btn-primary,
+		.widget_product_search button[type="submit"],
+		.hestia-sidebar-open.btn.btn-rose,
+		.hestia-sidebar-close.btn.btn-rose,
+		.everest-forms button[type=submit].everest-forms-submit-button {
+		    -webkit-box-shadow: 0 2px 2px 0 rgba(233,30,99,0.14),0 3px 1px -2px rgba(233,30,99,0.2),0 1px 5px 0 rgba(233,30,99,0.12);
+		    box-shadow: 0 2px 2px 0 rgba(233,30,99,0.14),0 3px 1px -2px rgba(233,30,99,0.2),0 1px 5px 0 rgba(233,30,99,0.12);
+		}
+		
+		.card .header-primary, .card .content-primary,
+		.everest-forms button[type=submit].everest-forms-submit-button {
+		    background: #e91e63;
+		}
+		
+		body:not(.woocommerce-page) .button:not([class^="fl-"]):not(.hestia-scroll-to-top):not(.navbar-toggle):not(.add_to_cart_button):hover,
+		body:not(.woocommerce-page) button:not([class^="fl-"]):not(.hestia-scroll-to-top):not(.navbar-toggle):not(.close):hover,
+		div.wpforms-container .wpforms-form button[type=submit].wpforms-submit:hover,
+		input[type="submit"]:hover,
+		input[type="button"]:hover,
+		input#searchsubmit:hover,
+		.widget_product_search button[type="submit"]:hover,
+		.pagination span.current,
+		.btn.btn-primary:hover,
+		.btn.btn-primary:focus,
+		.btn.btn-primary:active,
+		.btn.btn-primary.active,
+		.btn.btn-primary:active:focus,
+		.btn.btn-primary:active:hover,
+		.hestia-sidebar-open.btn.btn-rose:hover,
+		.hestia-sidebar-close.btn.btn-rose:hover,
+		.pagination span.current:hover,
+		.everest-forms button[type=submit].everest-forms-submit-button:hover,
+ 		.everest-forms button[type=submit].everest-forms-submit-button:focus,
+ 		.everest-forms button[type=submit].everest-forms-submit-button:active {
+			-webkit-box-shadow: 0 14px 26px -12px rgba(233,30,99,0.42),0 4px 23px 0 rgba(0,0,0,0.12),0 8px 10px -5px rgba(233,30,99,0.2);
+		    box-shadow: 0 14px 26px -12px rgba(233,30,99,0.42),0 4px 23px 0 rgba(0,0,0,0.12),0 8px 10px -5px rgba(233,30,99,0.2);
+			color: #fff;
+		}
+		
+		.form-group.is-focused .form-control {
+			background-image: -webkit-gradient(linear,left top, left bottom,from(#e91e63),to(#e91e63)),-webkit-gradient(linear,left top, left bottom,from(#d2d2d2),to(#d2d2d2));
+			background-image: -webkit-linear-gradient(linear,left top, left bottom,from(#e91e63),to(#e91e63)),-webkit-linear-gradient(linear,left top, left bottom,from(#d2d2d2),to(#d2d2d2));
+			background-image: linear-gradient(linear,left top, left bottom,from(#e91e63),to(#e91e63)),linear-gradient(linear,left top, left bottom,from(#d2d2d2),to(#d2d2d2));
+		}
+		
+		.navbar:not(.navbar-transparent) li:not(.btn):hover > a,
+		.navbar li.on-section:not(.btn) > a,
+		.navbar.full-screen-menu.navbar-transparent li:not(.btn):hover > a,
+		.navbar.full-screen-menu .navbar-toggle:hover,
+		.navbar:not(.navbar-transparent) .nav-cart:hover,
+		.navbar:not(.navbar-transparent) .hestia-toggle-search:hover {
+				color:#e91e63
+		}
+		
+			.header-filter-gradient {
+				background: linear-gradient(45deg, rgba(168,29,132,1) 0%, rgb(234,57,111) 100%);
+			}
+			.has-text-color.has-header-gradient-color { color: #a81d84; }
+			.has-header-gradient-background-color[class*="has-background"] { background-color: #a81d84; }
+			
+		.has-text-color.has-background-color-color { color: #E5E5E5; }
+		.has-background-color-background-color[class*="has-background"] { background-color: #E5E5E5; }
+		
+
+			.title, .title a, 
+			.card-title, 
+			.card-title a,
+			.card-title a:hover,
+			.info-title,
+			.info-title a,
+			.footer-brand, 
+			.footer-brand a,
+			.media .media-heading, 
+			.media .media-heading a,
+			.hestia-info .info-title, 
+			.card-blog a.moretag,
+			.card-blog a.more-link,
+			.card .author a,
+			.hestia-about:not(.section-image) h1, .hestia-about:not(.section-image) h2, .hestia-about:not(.section-image) h3, .hestia-about:not(.section-image) h4, .hestia-about:not(.section-image) h5,
+			aside .widget h5,
+			aside .widget a,
+			.woocommerce ul.products[class*="columns-"] li.product-category h2,
+			.woocommerce #reviews #comments ol.commentlist li .comment-text p.meta .woocommerce-review__author,
+			.has-text-color.has-secondary-color {
+				color: #2d3359;
+			}
+			.has-secondary-background-color[class*="has-background"] {
+				background-color: #2d3359
+			}
+		.description, .card-description, .footer-big, .hestia-features .hestia-info p, .text-gray,
+		.hestia-about:not(.section-image) p, .hestia-about:not(.section-image) h6,
+		.has-text-color.has-body-color-color {
+			color: #999999;
+		}
+		.has-body-color-background-color[class*="has-background"] {
+			background-color: #999999
+		} 
+		.header-filter:before,
+		.has-header-overlay-color-background-color[class*="has-background"] {
+			background-color: rgba(0,0,0,0.5);
+		}
+		.has-text-color.has-header-overlay-color-color {
+			color: rgba(0,0,0,0.5);
+		} 
+		.page-header, .page-header .hestia-title, .page-header .sub-title,
+		.has-text-color.has-header-text-color-color {
+			color: #fff;
+		}
+		.has-header-text-color-background-color[class*="has-background"] {
+			background-color: #fff;
+		}
+			@media( max-width: 768px ) {
+				/* On mobile background-color */
+				.header > .navbar,
+				.navbar.navbar-fixed-top .navbar-collapse {
+					background-color: #fff;
+				}
+			}
+			.navbar:not(.navbar-transparent),
+			.navbar .dropdown-menu,
+			.nav-cart .nav-cart-content .widget,
+			.has-navbar-background-background-color[class*="has-background"] {
+				background-color: #fff;
+			}
+			
+			@media ( min-width: 769px ) {
+				.navbar.full-screen-menu .nav.navbar-nav { background-color: rgba(255,255,255,0.9) }
+			}
+			.has-navbar-background-color[class*="has-background"] {
+				color: #fff;
+			}
+		@media( min-width: 769px ) {
+			.navbar.navbar-transparent .navbar-brand,
+			.navbar.navbar-transparent .navbar-nav > li:not(.btn) > a,
+			.navbar.navbar-transparent .navbar-nav > .active > a,
+			.navbar.navbar-transparent.full-screen-menu .navbar-toggle,
+			.navbar.navbar-transparent:not(.full-screen-menu) .nav-cart-icon, 
+			.navbar.navbar-transparent.full-screen-menu li.responsive-nav-cart > a.nav-cart-icon,
+			.navbar.navbar-transparent .hestia-toggle-search,
+			.navbar.navbar-transparent .header-widgets-wrapper ul li a[href*="mailto:"],
+			.navbar.navbar-transparent .header-widgets-wrapper ul li a[href*="tel:"]{
+				color: #fff;
+			}
+		}
+		.navbar.navbar-transparent .hestia-toggle-search svg{
+			fill: #fff;
+		}
+		.has-text-color.has-navbar-transparent-text-color-color {
+			color: #fff;
+		}
+		.has-navbar-transparent-text-color-background-color[class*="has-background"],
+		.navbar.navbar-transparent .header-widgets-wrapper ul li a[href*="mailto:"]:before,
+		.navbar.navbar-transparent .header-widgets-wrapper ul li a[href*="tel:"]:before{
+			background-color: #fff;
+		}
+		@media( min-width: 769px ) {
+			.menu-open .navbar.full-screen-menu.navbar-transparent .navbar-toggle,
+			.navbar:not(.navbar-transparent) .navbar-brand,
+			.navbar:not(.navbar-transparent) li:not(.btn) > a,
+			.navbar.navbar-transparent.full-screen-menu li:not(.btn):not(.nav-cart) > a,
+			.navbar.navbar-transparent .dropdown-menu li:not(.btn) > a,
+			.hestia-mm-heading, .hestia-mm-description, 
+			.navbar:not(.navbar-transparent) .navbar-nav > .active > a,
+			.navbar:not(.navbar-transparent).full-screen-menu .navbar-toggle,
+			.navbar .nav-cart-icon,  
+			.navbar:not(.navbar-transparent) .hestia-toggle-search,
+			.navbar.navbar-transparent .nav-cart .nav-cart-content .widget li a,
+			.navbar .navbar-nav>li .dropdown-menu li.active>a {
+				color: #555;
+			}
+		}
+		@media( max-width: 768px ) {
+			.navbar.navbar-default .navbar-brand,
+			.navbar.navbar-default .navbar-nav li:not(.btn).menu-item > a,
+			.navbar.navbar-default .navbar-nav .menu-item.active > a,
+			.navbar.navbar-default .navbar-toggle,
+			.navbar.navbar-default .navbar-toggle,
+			.navbar.navbar-default .responsive-nav-cart a,
+			.navbar.navbar-default .nav-cart .nav-cart-content a,
+			.navbar.navbar-default .hestia-toggle-search,
+			.hestia-mm-heading, .hestia-mm-description {
+				color: #555;
+			}
+			
+			.navbar .navbar-nav .dropdown:not(.btn) a .caret svg{
+				fill: #555;
+			}
+			
+			
+			.navbar .navbar-nav .dropdown:not(.btn) a .caret {
+				border-color: #555;
+			}
+		}
+		.has-text-color.has-navbar-text-color-color {
+			color: #555;
+		}
+		.has-navbar-text-color-background-color[class*="has-background"] {
+			background-color: #555;
+		}
+		.navbar:not(.navbar-transparent) .header-widgets-wrapper ul li a[href*="mailto:"]:before,
+		.navbar:not(.navbar-transparent) .header-widgets-wrapper ul li a[href*="tel:"]:before{
+			background-color:#555
+		}
+		.hestia-toggle-search svg{
+			fill: #555;
+		}
+		
+		.navbar.navbar-default:not(.navbar-transparent) li:not(.btn):hover > a,
+		.navbar.navbar-default.navbar-transparent .dropdown-menu:not(.btn) li:not(.btn):hover > a,
+		.navbar.navbar-default:not(.navbar-transparent) li:not(.btn):hover > a i,
+		.navbar.navbar-default:not(.navbar-transparent) .navbar-toggle:hover,
+		.navbar.navbar-default:not(.full-screen-menu) .nav-cart-icon .nav-cart-content a:hover, 
+		.navbar.navbar-default:not(.navbar-transparent) .hestia-toggle-search:hover,
+		.navbar.navbar-transparent .nav-cart .nav-cart-content .widget li:hover a,
+		.has-text-color.has-navbar-text-color-hover-color {
+			color: #e91e63;
+		}
+		.navbar.navbar-default li.on-section:not(.btn) > a {color: #e91e63!important}
+		@media( max-width: 768px ) {
+			.navbar.navbar-default.navbar-transparent li:not(.btn):hover > a,
+			.navbar.navbar-default.navbar-transparent li:not(.btn):hover > a i,
+			.navbar.navbar-default.navbar-transparent .navbar-toggle:hover,
+			.navbar.navbar-default .responsive-nav-cart a:hover
+			.navbar.navbar-default .navbar-toggle:hover {
+				color: #e91e63 !important;
+			}
+		}
+		.has-navbar-text-color-hover-background-color[class*="has-background"] {
+			background-color: #e91e63;
+		}
+		.navbar:not(.navbar-transparent) .header-widgets-wrapper ul li:hover a[href*="mailto:"]:before,
+		.navbar:not(.navbar-transparent) .header-widgets-wrapper ul li:hover a[href*="tel:"]:before{
+			background-color:#e91e63
+		}
+		.hestia-toggle-search:hover svg{
+			fill: #e91e63;
+		}
+		
+		.form-group.is-focused .form-control,
+		 div.wpforms-container .wpforms-form .form-group.is-focused .form-control,
+		 .nf-form-cont input:not([type=button]):focus,
+		 .nf-form-cont select:focus,
+		 .nf-form-cont textarea:focus {
+		 background-image: -webkit-gradient(linear,left top, left bottom,from(#e91e63),to(#e91e63)),-webkit-gradient(linear,left top, left bottom,from(#d2d2d2),to(#d2d2d2));
+		 background-image: -webkit-linear-gradient(linear,left top, left bottom,from(#e91e63),to(#e91e63)),-webkit-linear-gradient(linear,left top, left bottom,from(#d2d2d2),to(#d2d2d2));
+		 background-image: linear-gradient(linear,left top, left bottom,from(#e91e63),to(#e91e63)),linear-gradient(linear,left top, left bottom,from(#d2d2d2),to(#d2d2d2));
+		 }
+		
+		 .navbar.navbar-transparent.full-screen-menu .navbar-collapse .navbar-nav > li:not(.btn) > a:hover {
+		 color: #e91e63;
+		 }
+		 
+		 .hestia-ajax-loading{
+		 border-color: #e91e63;
+		 }
+.btn.btn-primary:not(.colored-button):not(.btn-left):not(.btn-right):not(.btn-just-icon):not(.menu-item), input[type="submit"]:not(.search-submit), body:not(.woocommerce-account) .woocommerce .button.woocommerce-Button, .woocommerce .product button.button, .woocommerce .product button.button.alt, .woocommerce .product #respond input#submit, .woocommerce-cart .blog-post .woocommerce .cart-collaterals .cart_totals .checkout-button, .woocommerce-checkout #payment #place_order, .woocommerce-account.woocommerce-page button.button, .woocommerce .track_order button[type="submit"], .nav-cart .nav-cart-content .widget .buttons .button, .woocommerce a.button.wc-backward, body.woocommerce .wccm-catalog-item a.button, body.woocommerce a.wccm-button.button, form.woocommerce-form-coupon button.button, div.wpforms-container .wpforms-form button[type=submit].wpforms-submit, div.woocommerce a.button.alt, div.woocommerce table.my_account_orders .button, .btn.colored-button, .btn.btn-left, .btn.btn-right, .btn:not(.colored-button):not(.btn-left):not(.btn-right):not(.btn-just-icon):not(.menu-item):not(.hestia-sidebar-open):not(.hestia-sidebar-close){ padding-top:15px;  padding-bottom:15px;  padding-left:33px;  padding-right:33px; }
+.btn.btn-primary:not(.colored-button):not(.btn-left):not(.btn-right):not(.btn-just-icon):not(.menu-item), input[type="submit"]:not(.search-submit), body:not(.woocommerce-account) .woocommerce .button.woocommerce-Button, .woocommerce .product button.button, .woocommerce .product button.button.alt, .woocommerce .product #respond input#submit, .woocommerce-cart .blog-post .woocommerce .cart-collaterals .cart_totals .checkout-button, .woocommerce-checkout #payment #place_order, .woocommerce-account.woocommerce-page button.button, .woocommerce .track_order button[type="submit"], .nav-cart .nav-cart-content .widget .buttons .button, .woocommerce a.button.wc-backward, body.woocommerce .wccm-catalog-item a.button, body.woocommerce a.wccm-button.button, form.woocommerce-form-coupon button.button, div.wpforms-container .wpforms-form button[type=submit].wpforms-submit, div.woocommerce a.button.alt, div.woocommerce table.my_account_orders .button, input[type="submit"].search-submit, .hestia-view-cart-wrapper .added_to_cart.wc-forward, .woocommerce-product-search button, .woocommerce-cart .actions .button, #secondary div[id^=woocommerce_price_filter] .button, .woocommerce div[id^=woocommerce_widget_cart].widget .buttons .button, .searchform input[type=submit], .searchform button, .search-form:not(.media-toolbar-primary) input[type=submit], .search-form:not(.media-toolbar-primary) button, .woocommerce-product-search input[type=submit], .btn.colored-button, .btn.btn-left, .btn.btn-right, .btn:not(.colored-button):not(.btn-left):not(.btn-right):not(.btn-just-icon):not(.menu-item):not(.hestia-sidebar-open):not(.hestia-sidebar-close){border-radius:3px;}
+
+		.btn:hover{
+			background-color: #858585;
+		}
+		
+
+		.aos-init[data-aos] {
+		  transition-duration: 1.25s;
+		  -webkit-transition-duration: 1.25s;
+		  -moz-transition-duration: 1.25s;
+		  transition-timing-function: ease-out;
+		  -webkit-transition-timing-function: ease-out;
+		  -moz-transition-timing-function: ease-out;
+		  will-change: transform, opacity;
+		}
+		.aos-init[data-aos].hestia-table-two {
+		  transition-duration: 1s;
+		  -webkit-transition-duration: 1s;
+		  -moz-transition-duration: 1s;
+		}
+		.aos-init[data-aos^=fade][data-aos^=fade] {
+		  opacity: 0;
+		  transition-property: opacity, transform;
+		}
+		.aos-init[data-aos^=fade][data-aos^=fade].aos-animate {
+		  opacity: 1;
+		  transform: translate3d(0, 0, 0);
+		}
+		.aos-init[data-aos=fade-up] {
+		  transform: translate3d(0, 35px, 0);
+		}
+		.aos-init[data-aos=fade-down] {
+		  transform: translate3d(0, -35px, 0);
+		}
+		.aos-init[data-aos=fade-right] {
+		  transform: translate3d(-35px, 0, 0);
+		}
+		.aos-init[data-aos=fade-left] {
+		  transform: translate3d(35px, 0, 0);
+		}
+		
+/*# sourceURL=hestia_style-inline-css */
+</style>
+
+<script id="jquery-core-js" src="https://de.credityup.com/wp-includes/js/jquery/jquery.min.js?ver=3.7.1"></script>
+<script id="jquery-migrate-js" src="https://de.credityup.com/wp-includes/js/jquery/jquery-migrate.min.js?ver=3.4.1"></script>
+<link rel="https://api.w.org/" href="https://de.credityup.com/wp-json/" /><link rel="alternate" title="JSON" type="application/json" href="https://de.credityup.com/wp-json/wp/v2/pages/88" /><link rel="EditURI" type="application/rsd+xml" title="RSD" href="https://de.credityup.com/xmlrpc.php?rsd" />
+<meta name="generator" content="WordPress 7.1.3" />
+<link rel="canonical" href="https://de.credityup.com/digitale-romanzen-liebe-finden-lp-01/" />
+<link rel='shortlink' href='https://de.credityup.com/?p=88' />
+<!-- HFCM by 99 Robots - Snippet # 2: Pixel DE Credityup DIOGO -->
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '1449018793827685');
+fbq('track', 'PageView');
+
+// 1. Regista a conversão final quando o Rewarded Ad é concluído
+window.googletag = window.googletag || {cmd: []};
+googletag.cmd.push(function() {
+    googletag.pubads().addEventListener('rewardedSlotGranted', function(event) {
+        fbq('track', 'Lead', {
+            content_name: 'Rewarded_Ad_Completed'
+        });
+    });
+});
+
+// 2. Regista o início de interação no Quiz ao clicar nas opções
+document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('click', function(e) {
+        // Deteta cliques nos botões ou opções do Quiz
+        if (e.target.closest('.quiz-option, .quiz-btn, button, [role="button"]')) {
+            fbq('track', 'InitiateCheckout', {
+                content_name: 'Quiz_Option_Clicked'
+            });
+        }
+    });
+});
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=1449018793827685&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->
+<!-- /end HFCM by 99 Robots -->
+<!-- HFCM by 99 Robots - Snippet # 3: GA4 - DE (de.credityup.com) -->
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-32D020LG1Q"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-32D020LG1Q');
+</script>
+<!-- /end HFCM by 99 Robots -->
+<!-- HFCM by 99 Robots - Snippet # 4: Rewarded same-page fix (header) -->
+<script>
+(function(){
+  var MODE = 'reload'; // 'reload' = recarrega a mesma URL | 'stay' = só fecha o popup, sem recarregar
+  var P = JSON.parse;
+  JSON.parse = function(t, r){
+    var v = P.apply(this, arguments);
+    try {
+      if (Array.isArray(v)) v.forEach(function(b){
+        if (b && typeof b === 'object' && typeof b.redirect_url === 'string' && /viralnetwork\.com\.br/i.test(b.redirect_url)) {
+          var u = location.href.split('#')[0];
+          b.redirect_url = MODE === 'stay' ? u + '#ok' : u;
+          b.hash = '';
+        }
+      });
+    } catch(e){}
+    return v;
+  };
+})();
+</script>
+<!-- /end HFCM by 99 Robots -->
+<!-- HFCM by 99 Robots - Snippet # 5: CY modern loader -->
+<style id="cy-loader-css">
+#cy-loader{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;background:radial-gradient(circle at 50% 40%,rgba(255,255,255,.92),rgba(255,240,246,.96));backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:opacity .35s ease,visibility .35s ease}
+#cy-loader.cy-hide{opacity:0;visibility:hidden;pointer-events:none}
+#cy-loader .cy-hearts{position:relative;width:64px;height:64px}
+#cy-loader .cy-hearts span{position:absolute;inset:0;margin:auto;width:26px;height:26px;background:#e62a7a;transform:rotate(45deg);animation:cyb 1.1s ease-in-out infinite}
+#cy-loader .cy-hearts span:before,#cy-loader .cy-hearts span:after{content:"";position:absolute;width:26px;height:26px;border-radius:50%;background:inherit}
+#cy-loader .cy-hearts span:before{left:-13px}#cy-loader .cy-hearts span:after{top:-13px}
+#cy-loader .cy-hearts span:nth-child(2){background:#ff7aa8;opacity:.55;animation-delay:.2s;transform:rotate(45deg) scale(1.5)}
+#cy-loader .cy-bar{width:140px;height:4px;border-radius:4px;background:rgba(230,42,122,.15);overflow:hidden}
+#cy-loader .cy-bar i{display:block;width:40%;height:100%;border-radius:4px;background:linear-gradient(90deg,#e62a7a,#ff7aa8);animation:cyl 1s ease-in-out infinite}
+@keyframes cyb{0%,100%{transform:rotate(45deg) scale(.85)}50%{transform:rotate(45deg) scale(1.05)}}
+@keyframes cyl{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+@media (prefers-reduced-motion:reduce){#cy-loader *{animation:none!important}}
+</style>
+<script>
+(function(){
+  var MIN=1500, MAX=2500, t0=Date.now(), done=false;
+  function mk(){ if(document.getElementById('cy-loader')||!document.body) return;
+    var d=document.createElement('div'); d.id='cy-loader'; d.setAttribute('aria-hidden','true');
+    d.innerHTML='<div class="cy-hearts"><span></span><span></span></div><div class="cy-bar"><i></i></div>';
+    document.body.insertBefore(d,document.body.firstChild); }
+  function hide(){ if(done) return; var w=MIN-(Date.now()-t0);
+    if(w>0){ setTimeout(hide,w); return; } done=true;
+    var d=document.getElementById('cy-loader'); if(d){ d.classList.add('cy-hide'); setTimeout(function(){d.remove();},400);} }
+  if(document.body) mk(); else document.addEventListener('DOMContentLoaded',mk);
+  // auction window: hide when first ad slot finishes rendering, or at MAX ms
+  window.googletag=window.googletag||{cmd:[]};
+  googletag.cmd.push(function(){ googletag.pubads().addEventListener('slotRenderEnded',function(){ hide(); }); });
+  setTimeout(hide,MAX);
+})();
+</script>
+<!-- /end HFCM by 99 Robots -->
+
+<!-- Google Tag Manager for WordPress by gtm4wp.com -->
+<!-- GTM Container placement set to automatic -->
+<script data-cfasync="false" data-pagespeed-no-defer>
+	var dataLayer_content = {"pagePostType":"page","pagePostType2":"single-page","pagePostAuthor":"Ana Alice"};
+	dataLayer.push( dataLayer_content );
+</script>
+<script data-cfasync="false" data-pagespeed-no-defer>
+(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-573CZ7M5');
+</script>
+<!-- End Google Tag Manager for WordPress by gtm4wp.com --><style id="wp-custom-css">
+/* =========================================================
+   1. HEADER ROSA COMPACTO DO TEMA (Sem espaço em branco)
+   ========================================================= */
+header.header {
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+#primary.page-header,
+.page-header.header-small,
+.page-header {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-top: 85px !important;    /* Espaço justo abaixo do menu fixo */
+    padding-bottom: 35px !important; /* Faixa rosa fina e elegante */
+    margin: 0 !important;
+    background-color: #d81b60 !important;
+    background-image: none !important;
+}
+
+/* Centralização perfeita do Título */
+.page-header .container {
+    padding: 0 !important;
+    margin: 0 auto !important;
+}
+
+.page-header .title,
+.header-filter h1.title,
+.header-filter h1.hestia-title,
+.page-header h1 {
+    color: #ffffff !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    text-shadow: none !important;
+    margin: 0 auto !important;
+    padding: 0 15px !important;
+    line-height: 1.3 !important;
+    display: block !important;
+    width: 100% !important;
+}
+
+.header-filter::before,
+.header-filter::after {
+    display: none !important;
+}
+
+/* =========================================================
+   2. CARD BRANCO COLADO NA FAIXA ROSA
+   ========================================================= */
+body {
+    background-color: #f4f5f7 !important;
+}
+
+.main,
+.blog-post,
+.section-text,
+.page-content-wrap {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    background: transparent !important;
+}
+
+.main-raised {
+    margin: -15px auto 30px auto !important; /* Encaixe sem engolir o anúncio */
+    max-width: 850px !important;
+    width: 92% !important;
+    background: #ffffff !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+    padding: 20px !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+/* =========================================================
+   3. ESTRUTURA DO ANÚNCIO (IN-FEED) & EMPURRÃO DO QUIZ
+   ========================================================= */
+.col-md-8.page-content-wrap {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Força o bloco de anúncio a ser a primeira coisa visível no card */
+.winup-ad-block,
+.winup-ad-block-1,
+winupads {
+    order: 1 !important;
+    display: block !important;
+    clear: both !important;
+    margin: 0 auto 15px auto !important;
+    width: 100% !important;
+    text-align: center !important;
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+.winup-ad-block iframe,
+#content1 iframe {
+    display: block !important;
+    margin: 0 auto !important;
+    max-width: 100% !important;
+}
+
+/* Força o Quiz a ficar estritamente abaixo do anúncio */
+#qwu-quiz-en {
+    order: 2 !important;
+    clear: both !important;
+    margin-top: 15px !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Demais parágrafos e botões seguem abaixo */
+p.wp-block-paragraph,
+.wp-block-heading,
+.has-custom-css {
+    order: 3 !important;
+}
+
+/* =========================================================
+   4. ESTILIZAÇÃO DOS BOTÕES DE AÇÃO (.pf-dbtn)
+   ========================================================= */
+p.wp-block-paragraph br {
+    display: none !important;
+}
+
+a.pf-dbtn {
+    display: block !important;
+    width: 100% !important;
+    padding: 15px 20px !important;
+    margin: 8px 0 !important;
+    border-radius: 8px !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+    text-transform: uppercase !important;
+    text-align: center !important;
+    color: #ffffff !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease-in-out !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+    box-sizing: border-box !important;
+}
+
+a.pf-dbtn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14) !important;
+    color: #ffffff !important;
+    filter: brightness(1.05) !important;
+}
+
+a.pf-dbtn:nth-of-type(1) { background-color: #d81b60 !important; }
+a.pf-dbtn:nth-of-type(2) { background-color: #3b62f6 !important; }
+a.pf-dbtn:nth-of-type(3) { background-color: #42ac53 !important; }
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* =========================================================
+   SANGRIA COMPLETA DA IMAGEM APENAS NO HEADER DO REWARD
+   ========================================================= */
+#masterRewarded .ramx-card,
+#masterRewarded .ramx-modal-content {
+    padding-top: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    overflow: hidden !important;
+    border-radius: 18px !important;
+}
+
+/* Ocupa 100% do topo do modal */
+#masterRewarded .ramx-header {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 180px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    position: relative !important;
+    overflow: hidden !important;
+    background-color: #FCE4EC !important;
+    box-sizing: border-box !important;
+}
+
+/* Aplica o filtro de esticar APENAS na imagem do topo do topo do modal */
+#masterRewarded .ramx-header img {
+    width: 100% !important;
+    min-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Protege os emojis de texto contra alteração de tamanho */
+img.emoji {
+    width: 1em !important;
+    height: 1em !important;
+    display: inline !important;
+    margin: 0 0.07em !important;
+    vertical-align: -0.1em !important;
+}
+
+
+
+
+/* =========================================================
+   3. POSICIONAMENTO LIMPO DO ANÚNCIO E DO QUIZ (SEM FLEXBOX)
+   ========================================================= */
+/* Remove a regra de flexbox que puxou os metadados do rodapé */
+.col-md-8.page-content-wrap {
+    display: block !important;
+}
+
+/* Anúncio centralizado no topo com margem ajustada */
+.winup-ad-block,
+.winup-ad-block-1,
+winupads {
+    display: block !important;
+    clear: both !important;
+    float: none !important;
+    margin: -8px auto 16px auto !important;
+    width: 100% !important;
+    text-align: center !important;
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+.winup-ad-block iframe,
+#content1 iframe {
+    display: block !important;
+    margin: 0 auto !important;
+    max-width: 100% !important;
+}
+
+/* Quiz logo abaixo do anúncio mantendo fluxo natural */
+#qwu-quiz-en {
+    display: block !important;
+    clear: both !important;
+    margin-top: 16px !important;
+    margin-bottom: 32px !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Mantém os metadados ocilados ao final do post */
+.page-content-wrap div[style*="display:none"],
+.page-content-wrap div[style*="display: none"] {
+    display: none !important;
+}
+
+/* =========================================================
+   4. ESTILIZAÇÃO DOS BOTÕES DE AÇÃO (.pf-dbtn)
+   ========================================================= */
+p.wp-block-paragraph br {
+    display: none !important;
+}
+
+a.pf-dbtn {
+    display: block !important;
+    width: 100% !important;
+    padding: 15px 20px !important;
+    margin: 8px 0 !important;
+    border-radius: 8px !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+    text-transform: uppercase !important;
+    text-align: center !important;
+    color: #ffffff !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease-in-out !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+    box-sizing: border-box !important;
+}
+
+a.pf-dbtn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14) !important;
+    color: #ffffff !important;
+    filter: brightness(1.05) !important;
+}
+
+a.pf-dbtn:nth-of-type(1) { background-color: #d81b60 !important; }
+a.pf-dbtn:nth-of-type(2) { background-color: #3b62f6 !important; }
+a.pf-dbtn:nth-of-type(3) { background-color: #42ac53 !important; }
+</style>
+<style id="wp-block-custom-css-inline-css">
+:root :where(.wp-custom-css-64f7183e.wp-block-button ){margin-bottom: 4px !important;}
+/*# sourceURL=wp-block-custom-css-inline-css */
+</style>
+
+</head>
+
+<body class="wp-singular page-template-default page page-id-88 wp-custom-logo wp-theme-hestia-pro blog-post header-layout-default">
+	
+<!-- GTM Container placement set to automatic -->
+<!-- Google Tag Manager (noscript) -->
+				<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-573CZ7M5" height="0" width="0" style="display:none;visibility:hidden" aria-hidden="true"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->	<div class="wrapper  default ">
+		<header class="header ">
+			<div style="display: none"></div>		<nav class="navbar navbar-default navbar-fixed-top  hestia_left navbar-not-transparent">
+						<div class="container">
+						<div class="navbar-header">
+			<div class="title-logo-wrapper">
+				<a class="navbar-brand" href="https://de.credityup.com/"
+						title="De credityup">
+					<img  src="https://de.credityup.com/wp-content/uploads/2026/10/cropped-Logo-de-Figuras-Entrelacadas-1.png" alt="De credityup"></a>
+			</div>
+								<div class="navbar-toggle-wrapper">
+						<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#main-navigation">
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+				<span class="sr-only">Toggle Navigation</span>
+			</button>
+					</div>
+				</div>
+		<div id="main-navigation" class="collapse navbar-collapse"><ul id="menu-header-nav" class="nav navbar-nav"><li id="menu-item-68" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-68"><a title="Beginnen" href="/">Beginnen</a></li>
+<li id="menu-item-63" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-63"><a title="Apps" href="https://de.credityup.com/category/apps/">Apps</a></li>
+<li id="menu-item-64" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-64"><a title="Flirten" href="https://de.credityup.com/category/flirten/">Flirten</a></li>
+<li id="menu-item-65" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-65"><a title="Beziehungen" href="https://de.credityup.com/category/beziehungen/">Beziehungen</a></li>
+<li id="menu-item-66" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-66"><a title="Liebe" href="https://de.credityup.com/category/liebe/">Liebe</a></li>
+<li id="menu-item-67" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-67"><a title="Dating" href="https://de.credityup.com/category/dating/">Dating</a></li>
+</ul></div>			</div>
+					</nav>
+				</header>
+<div id="primary" class="boxed-layout-header page-header header-small" data-parallax="active" ><div class="container"><div class="row"><div class="col-md-10 col-md-offset-1 text-center"><h1 class="hestia-title ">Umgang mit digitaler Romantik: Finden Sie dauerhafte Bindungen</h1></div></div></div><div class="header-filter header-filter-gradient"></div></div><div class="main  main-raised ">
+		<div class="blog-post ">
+		<div class="container">
+			
+
+	<article id="post-88" class="section section-text">
+		<div class="row">
+						<div class="col-md-8 page-content-wrap  col-md-offset-2">
+				<div class="winup-ad-block winup-ad-block-1" style="text-align:center;"><winupads tag="content1" label="Werbung"></winupads></div><style>
+    #qwu-quiz-v3 {
+      --qwu-v3-ink: #1c1917;
+      --qwu-v3-muted: #57534e;
+      --qwu-v3-rose: #9f1239;
+      box-sizing: border-box;
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      margin: 32px 0;
+      padding: 0;
+      overflow-x: hidden;
+      background: #ffffff;
+      color: var(--qwu-v3-ink);
+      border: 1px solid rgba(159, 18, 57, 0.16);
+      border-radius: 28px;
+      box-shadow: 0 18px 44px rgba(136, 19, 55, 0.12);
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+      font-size: 18px;
+      line-height: 1.45;
+      text-align: left;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #qwu-quiz-v3 *,
+    #qwu-quiz-v3 *::before,
+    #qwu-quiz-v3 *::after {
+      box-sizing: border-box;
+      min-width: 0;
+    }
+
+    #qwu-quiz-v3 h2,
+    #qwu-quiz-v3 h3,
+    #qwu-quiz-v3 p {
+      margin: 0;
+      padding: 0;
+      max-width: 100%;
+      overflow-wrap: break-word;
+      word-wrap: break-word;
+      font-family: inherit;
+      font-style: normal;
+      letter-spacing: normal;
+      text-transform: none;
+    }
+
+    #qwu-v3-hero {
+      padding: 36px 40px 32px;
+      background: linear-gradient(135deg, #881337 0%, #9f1239 46%, #e11d48 100%);
+      color: #ffffff;
+    }
+
+    #qwu-quiz-v3 #qwu-v3-kicker {
+      margin: 0 0 10px;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      line-height: 1.3;
+      text-transform: uppercase;
+    }
+
+    #qwu-quiz-v3 #qwu-v3-title {
+      margin: 0;
+      color: #ffffff;
+      font-size: clamp(1.7rem, 4vw, 2.55rem);
+      font-weight: 700;
+      line-height: 1.15;
+    }
+
+    #qwu-v3-body {
+      padding: 28px 40px 36px;
+    }
+
+    #qwu-v3-progress-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 12px;
+    }
+
+    #qwu-quiz-v3 #qwu-v3-step-count {
+      margin: 0;
+      color: var(--qwu-v3-rose);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      line-height: 1;
+    }
+
+    #qwu-v3-progress {
+      width: 100%;
+      max-width: 100%;
+      height: 10px;
+      margin: 0 0 28px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #f5f5f4;
+    }
+
+    #qwu-v3-progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #e11d48, #9f1239);
+      transition: width 0.35s ease;
+    }
+
+    #qwu-quiz-v3 #qwu-v3-question {
+      margin: 0;
+      color: var(--qwu-v3-ink);
+      font-size: clamp(1.35rem, 3vw, 2rem);
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    #qwu-quiz-v3 #qwu-v3-question[data-state="result"] {
+      color: var(--qwu-v3-ink);
+    }
+
+    #qwu-quiz-v3 #qwu-v3-question[data-state="loading"] {
+      color: var(--qwu-v3-muted);
+      font-size: clamp(1.15rem, 2.6vw, 1.45rem);
+    }
+
+    #qwu-quiz-v3 #qwu-v3-actions {
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      margin: 22px 0 0;
+      position: relative;
+      z-index: 20;
+      overflow-x: hidden;
+    }
+
+    #qwu-quiz-v3 button.quiz-option-btn {
+      box-sizing: border-box;
+      appearance: none;
+      -webkit-appearance: none;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      width: 100% !important;
+      max-width: 100%;
+      min-height: 68px;
+      margin: 0;
+      padding: 18px 20px;
+      border: 0;
+      border-radius: 16px;
+      background: #9f1239;
+      background-image: none;
+      box-shadow: 0 10px 24px rgba(159, 18, 57, 0.22);
+      color: #ffffff;
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      line-height: 1.3;
+      letter-spacing: normal;
+      text-align: center;
+      text-decoration: none;
+      text-transform: none;
+      overflow-wrap: break-word;
+      cursor: pointer !important;
+      pointer-events: auto !important;
+      touch-action: manipulation !important;
+      user-select: none;
+      opacity: 1 !important;
+      visibility: visible !important;
+      position: relative;
+      z-index: 21;
+      float: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #qwu-quiz-v3 button.quiz-option-btn:hover {
+      background: #881337;
+      color: #ffffff;
+    }
+
+    #qwu-quiz-v3 button.quiz-option-btn:focus-visible {
+      outline: 3px solid #9f1239;
+      outline-offset: 3px;
+    }
+
+    @media (max-width: 480px) {
+      #qwu-quiz-v3 {
+        margin: 24px 0;
+        border-radius: 20px;
+      }
+
+      #qwu-v3-hero {
+        padding: 24px 16px 20px;
+      }
+
+      #qwu-v3-body {
+        padding: 20px 16px 22px;
+      }
+
+      #qwu-v3-progress {
+        height: 8px;
+        margin-bottom: 20px;
+      }
+
+      #qwu-quiz-v3 #qwu-v3-kicker {
+        letter-spacing: 0.06em;
+      }
+
+      #qwu-quiz-v3 #qwu-v3-title {
+        font-size: 1.5rem;
+      }
+
+      #qwu-quiz-v3 #qwu-v3-question {
+        font-size: 1.3rem;
+      }
+
+      #qwu-quiz-v3 #qwu-v3-actions {
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      #qwu-quiz-v3 button.quiz-option-btn {
+        min-height: 60px;
+        padding: 16px 14px;
+        font-size: 1rem;
+      }
+    }
+
+    #qwu-quiz-v3 button.quiz-option-btn[data-qwu-active="0"] {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      min-height: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      overflow: hidden !important;
+      border: 0 !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      box-shadow: none !important;
+      clip: rect(0, 0, 0, 0);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #qwu-v3-progress-fill {
+        transition: none;
+      }
+    }
+  </style>
+  <div id="qwu-quiz-v3" data-qwu-step="0" data-qwu-phase="question" data-qwu-locked="0">
+    <header id="qwu-v3-hero">
+      <p id="qwu-v3-kicker">Dating-App-Match-Quiz</p><h2 id="qwu-v3-title">Finde dein bestes Beziehungs-Match</h2>
+    </header>
+    <div id="qwu-v3-body">
+      <div id="qwu-v3-progress-row">
+        <p id="qwu-v3-step-count">1 VON 3</p></div>
+      <div id="qwu-v3-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Quiz-Fortschritt">
+        <div id="qwu-v3-progress-fill"></div>
+      </div>
+      <h3 id="qwu-v3-question" tabindex="-1">Was ist heute dein Hauptziel?</h3>
+      <div id="qwu-v3-actions">
+        <button type="button" class="qwu-v3-action quiz-option-btn" data-qwu-active="1" data-qwu-v3-value="quick_casual">Schnelle lockere Treffen</button>
+        <button type="button" class="qwu-v3-action quiz-option-btn" data-qwu-active="1" data-qwu-v3-value="serious_relationship">Ernsthafte Beziehung</button>
+        <button type="button" class="qwu-v3-action quiz-option-btn" data-qwu-active="0"></button>
+      </div>
+    </div>
+  </div>
+
+
+
+<p class="wp-block-paragraph">Die Suche nach einer tiefen Verbindung beginnt oft nicht mit dem bekanntesten Namen, sondern mit dem Verständnis der eigenen Wünsche.</p><p class="wp-block-paragraph">Der ideale Weg führt nicht über leere Versprechungen, sondern durch eine klare Strategie und bewusste Entscheidungen.</p><p class="has-custom-css wp-custom-css-64f7183e wp-block-paragraph"><a data-pf="btn" style="display:block;width:100%;background:#0b76ef;color:#fff;font-weight:700;font-size:15px;line-height:1.3;letter-spacing:.3px;text-transform:uppercase;text-align:center;padding:20px 18px;border-radius:6px;text-decoration:none;margin:26px 0 4px;box-sizing:border-box;" href="https://de.credityup.com/digitale-romanzen-liebe-finden-lp-01-art01/" class="pf-dbtn">Mehr erfahren <span style="font-weight:700;">➔</span></a><br><a data-pf="btn" style="display:block;width:100%;background:#f5a623;color:#fff;font-weight:700;font-size:15px;line-height:1.3;letter-spacing:.3px;text-transform:uppercase;text-align:center;padding:20px 18px;border-radius:6px;text-decoration:none;margin:26px 0 4px;box-sizing:border-box;" href="https://de.credityup.com/digitale-romanzen-liebe-finden-lp-01-art02/" class="pf-dbtn">Entdecken <span style="font-weight:700;">➔</span></a><br><a data-pf="btn" style="display:block;width:100%;background:#0b76ef;color:#fff;font-weight:700;font-size:15px;line-height:1.3;letter-spacing:.3px;text-transform:uppercase;text-align:center;padding:20px 18px;border-radius:6px;text-decoration:none;margin:26px 0 4px;box-sizing:border-box;" href="https://de.credityup.com/digitale-romanzen-liebe-finden-lp-01-art03/" class="pf-dbtn">Zum Leitfaden <span style="font-weight:700;">➔</span></a></p><p class="has-text-align-center wp-block-paragraph">Sie bleiben auf dieser Seite.</p><h2 class="wp-block-heading">Die erste Frage: Was suchen Sie wirklich?</h2>
+
+
+
+<p class="wp-block-paragraph">Bevor Sie sich in die Welt der Online-Partnersuche begeben, lohnt es sich, Ihre Absichten zu klären. Suchen Sie nach einer ernsthaften Beziehung oder eher nach lockeren Treffen? Ihre Antwort beeinflusst maßgeblich die Wahl der passenden Plattform und Herangehensweise.</p><p class="wp-block-paragraph">Eine bewusste Selbstreflexion hilft, Enttäuschungen zu vermeiden und gezielter vorzugehen. So investieren Sie Ihre Zeit dort, wo die Erfolgsaussichten am höchsten sind.</p><h2 class="wp-block-heading">Online-Partnersuche: Zwischen Wunsch und Wirklichkeit</h2>
+
+
+
+<p class="wp-block-paragraph">Die digitale Partnersuche bietet Zugang zu einer Vielzahl von Menschen, die Sie im Alltag vielleicht nie treffen würden. Diese Vielfalt ist eine große Chance, birgt aber auch die Notwendigkeit, sich kritisch mit Profilen und Interaktionen auseinanderzusetzen.</p><p class="wp-block-paragraph">Manche Plattformen sind auf spezifische Interessen oder Altersgruppen zugeschnitten, andere decken ein breiteres Spektrum ab. Die Auswahl der richtigen Umgebung ist entscheidend für Ihre Erfahrung.</p><h2 class="wp-block-heading">Gestaltung Ihres Profils für echte Begegnungen</h2>
+
+
+
+<p class="wp-block-paragraph">Ihr Profil ist Ihr digitales Schaufenster. Authentizität und Klarheit sind hierbei die wichtigsten Faktoren. Ein ehrliches und detailliertes Profil, das Ihre Persönlichkeit widerspiegelt, zieht eher passende Kontakte an als ein idealisiertes Bild.</p><p class="wp-block-paragraph">Vermeiden Sie allgemeine Floskeln und zeigen Sie, was Sie einzigartig macht. Gute Fotos und eine durchdachte Beschreibung legen den Grundstein für interessante Gespräche.</p><h2 class="wp-block-heading">Sicherheit im Blick behalten</h2>
+
+
+
+<p class="wp-block-paragraph">Beim Online-Dating ist Vorsicht geboten, um sich vor Betrug und Missbrauch zu schützen. Überprüfen Sie Profile kritisch und geben Sie persönliche Informationen wie Ihre Adresse oder Routinen erst preis, wenn Sie volles Vertrauen gefasst haben. Treffen Sie sich bei ersten Verabredungen immer an einem öffentlichen Ort.</p><p class="wp-block-paragraph">Seien Sie aufmerksam bei Anzeichen von Catfishing oder Scammern, die oft nach finanziellen Informationen fragen. Blockieren und melden Sie verdächtige Profile sofort.</p><p class="wp-block-paragraph">Der Weg zu einer bedeutungsvollen Verbindung beginnt mit dem ersten Schritt. Konzentrieren Sie sich auf authentische Kommunikation und vertrauen Sie Ihrem Bauchgefühl, um echte Nähe zu finden.</p><p class="wp-block-paragraph"><em>Condições podem variar; confira regras oficiais.</em></p><p class="wp-block-paragraph">Sources: Die Zeit, Verbraucherzentrale, Der Bundesbeauftragte für den Datenschutz und die Informationsfreiheit</p><div style="display:none;">Keyword: Online-Dating<br>
+Tags: Online-Dating, Partnersuche online, Liebe finden, Digitale Romanzen, Beziehungen online, Dating-Apps, Online-Verabredungen, Ernsthafte Beziehung, Sicherheit Dating, Partnersuche Deutschland<br>
+Category: 💕 Namoro<br>
+Meta: Entdecken Sie, wie Sie in der digitalen Welt authentische Verbindungen finden können. Ein Leitfaden für eine erfolgreiche Partnersuche online.<br>
+Slug: /digitale-romanzen-liebe-finden-lp-01</div></p>			</div>
+					</div>
+	</article>
+		</div>
+	</div>
+						<footer class="footer footer-black footer-big">
+						<div class="container">
+																<div class="hestia-bottom-footer-content"><ul id="menu-footer-nav" class="footer-menu pull-left"><li id="menu-item-14" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-14"><a href="https://de.credityup.com/terms-of-use/">Nutzungsbedingungen</a></li>
+<li id="menu-item-17" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-privacy-policy menu-item-17"><a rel="privacy-policy" href="https://de.credityup.com/privacy-policy/">Datenschutzerklärung</a></li>
+<li id="menu-item-21" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-21"><a href="https://de.credityup.com/cookie-policy/">Haftungsausschluss</a></li>
+<li id="menu-item-61" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-61"><a href="/">Beginnen</a></li>
+</ul><div class="copyright pull-right">Hestia | Developed by <a href="https://themeisle.com" rel="nofollow">ThemeIsle</a></div></div>			</div>
+					</footer>
+				</div>
+	</div>
+<script type="speculationrules">
+{"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":["/wp-*.php","/wp-admin/*","/wp-content/uploads/*","/wp-content/*","/wp-content/plugins/*","/wp-content/themes/hestia-pro/*","/*\\?(.+)"]}},{"not":{"selector_matches":"a[rel~=\"nofollow\"]"}},{"not":{"selector_matches":".no-prefetch, .no-prefetch a"}}]},"eagerness":"conservative"}]}
+</script>
+<!-- HFCM by 99 Robots - Snippet # 1: Quiz JS -->
+<script>
+;(function () {
+	if (window.__qwuV3Bound) {
+		return;
+	}
+	window.__qwuV3Bound = true;
+	if (!window.document || !document.addEventListener) {
+		return;
+	}
+
+	var CTA_HREF = 'https://de.credityup.com/apps-leichte-dates-unkomplizierte-treffen-lp-02-art01/';
+	var LOADING_MS = 2500;
+	var ADVANCE_MS = 280;
+	var STEPS = [
+		{
+			question: 'Was ist heute dein Hauptziel?',
+			options: [
+				{ label: 'Schnelle lockere Treffen', value: 'quick_casual' },
+				{ label: 'Ernsthafte Beziehung', value: 'serious_relationship' }
+			]
+		},
+		{
+			question: 'In welcher Altersgruppe bist du?',
+			options: [
+				{ label: '18 bis 30 Jahre', value: 'age_18_30' },
+				{ label: '31 bis 50 Jahre', value: 'age_31_50' },
+				{ label: '50+ Jahre', value: 'age_50_plus' }
+			]
+		},
+		{
+			question: 'Was ist dir bei einer Dating-App am wichtigsten?',
+			options: [
+				{ label: 'Verifizierte und sichere Profile', value: 'verified_secure' },
+				{ label: 'Personen in meiner Nähe', value: 'people_nearby' }
+			]
+		}
+	];
+
+	function buttonsIn(quiz) {
+		return quiz.querySelectorAll('button.quiz-option-btn');
+	}
+
+	function setProgress(quiz, stepNumber, fraction) {
+		var count = quiz.querySelector('#qwu-v3-step-count');
+		var fill = quiz.querySelector('#qwu-v3-progress-fill');
+		var bar = quiz.querySelector('#qwu-v3-progress');
+		var value = Math.max(0, Math.min(100, Math.round(fraction * 100)));
+		if (count) {
+			count.textContent = stepNumber ? (stepNumber + ' VON 3') : '';
+		}
+		if (fill) {
+			fill.style.width = value + '%';
+		}
+		if (bar) {
+			bar.setAttribute('aria-valuenow', String(value));
+		}
+	}
+
+	function setQuestion(quiz, text, state) {
+		var question = quiz.querySelector('#qwu-v3-question');
+		if (!question) {
+			return;
+		}
+		question.textContent = text;
+		if (state) {
+			question.setAttribute('data-state', state);
+		} else {
+			question.removeAttribute('data-state');
+		}
+	}
+
+	function paintButtons(quiz, options) {
+		var buttons = buttonsIn(quiz);
+		var i;
+		for (i = 0; buttons.length > i; i += 1) {
+			if (options && options.length > i) {
+				buttons[i].textContent = options[i].label;
+				buttons[i].disabled = false;
+				buttons[i].setAttribute('data-qwu-active', '1');
+				buttons[i].setAttribute('data-qwu-v3-value', options[i].value);
+				buttons[i].removeAttribute('aria-hidden');
+			} else if (options) {
+				buttons[i].textContent = '';
+				buttons[i].disabled = true;
+				buttons[i].setAttribute('data-qwu-active', '0');
+				buttons[i].removeAttribute('data-qwu-v3-value');
+				buttons[i].setAttribute('aria-hidden', 'true');
+			}
+		}
+	}
+
+	function paintStep(quiz, index) {
+		var step = STEPS[index];
+		quiz.setAttribute('data-qwu-step', String(index));
+		quiz.setAttribute('data-qwu-phase', 'question');
+		quiz.setAttribute('data-qwu-locked', '0');
+		setQuestion(quiz, step.question, 'question');
+		setProgress(quiz, index + 1, index / STEPS.length);
+		paintButtons(quiz, step.options);
+	}
+
+	function showLoading(quiz) {
+		quiz.setAttribute('data-qwu-phase', 'loading');
+		quiz.setAttribute('data-qwu-locked', '1');
+		setQuestion(quiz, 'Verfügbare Profile in deiner Region werden gesucht...', 'loading');
+		setProgress(quiz, 0, 1);
+		paintButtons(quiz, []);
+	}
+
+	function showResult(quiz) {
+		quiz.setAttribute('data-qwu-phase', 'result');
+		quiz.setAttribute('data-qwu-locked', '0');
+		setQuestion(quiz, 'Wir haben 3 sehr gut passende Plattformen gefunden!', 'result');
+		setProgress(quiz, 0, 1);
+		if (quiz.getAttribute('data-qwu-lead') !== '1' && window.fbq) {
+			quiz.setAttribute('data-qwu-lead', '1');
+			try {
+				window.fbq('track', 'Lead');
+			} catch (err) {}
+		}
+		paintButtons(quiz, [{ label: 'Empfohlene Apps ansehen ➔', value: '__cta__' }]);
+	}
+
+	function advance(quiz, val) {
+		var phase = quiz.getAttribute('data-qwu-phase') || 'question';
+		var step;
+		var stepNumber;
+		if (phase === 'result') {
+			if (val === '__cta__' && CTA_HREF) {
+				window.location.href = CTA_HREF;
+			}
+			return;
+		}
+		if (quiz.getAttribute('data-qwu-locked') === '1' || phase !== 'question') {
+			return;
+		}
+		quiz.setAttribute('data-qwu-locked', '1');
+		step = parseInt(quiz.getAttribute('data-qwu-step') || '0', 10);
+		if (isNaN(step)) {
+			step = 0;
+		}
+		stepNumber = step + 1;
+		try {
+			if (stepNumber === 1 && quiz.getAttribute('data-qwu-started') !== '1' && window.fbq) {
+				quiz.setAttribute('data-qwu-started', '1');
+				window.fbq('trackCustom', 'QuizStarted');
+			}
+			if (window.googletag) {
+				window.googletag.cmd = window.googletag.cmd || [];
+				window.googletag.cmd.push(function () {
+					if (window.googletag && window.googletag.pubads) {
+						window.googletag.pubads().setTargeting('quiz_step_' + stepNumber, val);
+					}
+				});
+			}
+		} catch (err) {}
+		setProgress(quiz, stepNumber, stepNumber / STEPS.length);
+		window.setTimeout(function () {
+			if (STEPS.length - 1 > step) {
+				paintStep(quiz, step + 1);
+				return;
+			}
+			showLoading(quiz);
+			window.setTimeout(function () {
+				showResult(quiz);
+			}, LOADING_MS);
+		}, ADVANCE_MS);
+	}
+
+	window.qwuHandleChoice = function (el, val) {
+		var quiz = el && el.closest ? el.closest('#qwu-quiz-v3') : document.getElementById('qwu-quiz-v3');
+		if (!quiz || !val) {
+			return;
+		}
+		advance(quiz, val);
+	};
+
+	document.addEventListener('click', function (event) {
+		var target = event.target;
+		var button;
+		var quiz;
+		var val;
+		if (target && target.nodeType === 3) {
+			target = target.parentElement;
+		}
+		if (!target || !target.closest) {
+			return;
+		}
+		button = target.closest('.quiz-option-btn');
+		if (!button) {
+			return;
+		}
+		quiz = button.closest('#qwu-quiz-v3');
+		if (!quiz) {
+			return;
+		}
+		event.preventDefault();
+		if (button.getAttribute('data-qwu-active') === '0') {
+			return;
+		}
+		val = button.getAttribute('data-qwu-v3-value');
+		if (!val) {
+			return;
+		}
+		advance(quiz, val);
+	});
+})();
+</script>
+
+<!-- /end HFCM by 99 Robots -->
+        <!-- Rewarded Ad Modal Plugin -->
+        <style>
+            #masterRewarded { display:none; position:fixed; inset:0; width:100%; height:100%; background:rgba(15,23,42,0.55); z-index:99999; padding:20px; box-sizing:border-box; overflow-y:auto; }
+            #masterRewarded.active { display:flex; align-items:center; justify-content:center; }
+            body.no-scroll, html.no-scroll { overflow:hidden !important; height:100vh !important; }
+            .ramx-card { position:relative; background:#fff; border-radius:22px; max-width:480px; width:100%; box-shadow:0 25px 50px -12px rgba(0,0,0,0.4); overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+            .ramx-close { position:absolute; top:8px; right:8px; width:13px; height:13px; border-radius:50%; background:transparent; border:none; color:#FFFFFF; opacity:0.15; font-size:10px; font-weight:300; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; z-index:2; padding:0; transition:opacity 0.2s; }
+            .ramx-close:hover { opacity:1 !important; }
+            .ramx-header { background:#d3226c; padding:16px 24px; display:flex; align-items:center; justify-content:center; min-height:128px; }
+            .ramx-header img { height:106px; width:auto; max-width:90%; object-fit:contain; display:block; }
+            .ramx-body { padding:26px 24px 22px; text-align:center; }
+            .ramx-badge { display:inline-block; padding:6px 14px; background:#f1f5f9; color:#c22969; font-size:11px; font-weight:700; letter-spacing:0.5px; border-radius:999px; margin-bottom:14px; }
+            .ramx-title { font-size:20px; font-weight:800; color:#0f172a; margin:0 0 12px; line-height:1.25; text-transform:uppercase; }
+            .ramx-desc { font-size:14px; color:#475569; line-height:1.5; margin:0 0 18px; }
+            .ramx-buttons { display:flex; flex-direction:column; gap:12px; margin-bottom:14px; }
+            .ramx-btn { display:flex; align-items:center; gap:14px; padding:14px 16px; border:1.5px solid #e2e8f0; border-radius:14px; background:#fff; cursor:pointer; transition:border-color 0.15s, transform 0.05s; text-align:left; width:100%; font-family:inherit; }
+            .ramx-btn:hover { border-color:#c22969; }
+            .ramx-btn:active { transform:scale(0.99); }
+            .ramx-btn-icon { font-size:22px; flex-shrink:0; width:38px; height:38px; display:flex; align-items:center; justify-content:center; }
+            .ramx-btn-text { flex:1; font-size:14px; font-weight:600; color:#1e293b; line-height:1.3; }
+            .ramx-btn-arrow { flex-shrink:0; width:28px; height:28px; border-radius:50%; background:#c22969; color:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; }
+            .ramx-footer { font-size:12px; color:#94a3b8; font-style:italic; margin:6px 0 0; }
+            .ram-reward-trigger-loading { opacity:0.6 !important; pointer-events:none !important; cursor:progress !important; }
+        </style>
+        <div id="masterRewarded" role="dialog" aria-modal="true">
+            <div class="ramx-card">
+                <button type="button" class="ramx-close" id="ramxClose" aria-label="Fechar">×</button>
+                <div class="ramx-header">
+                                            <img alt="" data-ram-img-src="http://de.credityup.com/wp-content/uploads/2026/10/relacio4.jpg" referrerpolicy="no-referrer" loading="eager" onerror="this.style.display='none'">
+                                    </div>
+                <div class="ramx-body">
+                                        <h2 class="ramx-title" style="font-size:20px;font-weight:800;">WEITERLESEN</h2>
+                                            <p class="ramx-desc" style="font-size:14px;font-weight:400;">Um diese Seite weiterzulesen, können Sie sich eine kurze Werbung ansehen.
+Sobald die Werbung zu Ende ist, wird dieser Inhalt freigeschaltet.</p>
+                                        <div class="ramx-buttons" id="ramxButtons"></div>
+                                            <p class="ramx-footer" style="font-size:12px;font-weight:400;font-style:italic;">Wenn Sie die Werbung vor dem Ende schließen oder überspringen, wird der Inhalt möglicherweise nicht freigeschaltet.</p>
+                                    </div>
+            </div>
+        </div>
+        <script>
+        (function() {
+            const adSlotWeb = "\/23340104016\/de.credityup.com\/de_credityup_com_web_rewarded_20261007";
+            const adSlotMobile = "\/23340104016\/de.credityup.com\/de_credityup_com_mobile_rewarded_20261007";
+            const IS_MOBILE_MAX = 768;
+            const isMobileViewport = () => (window.innerWidth || document.documentElement.clientWidth || 0) < IS_MOBILE_MAX;
+            const slotName = isMobileViewport() ? (adSlotMobile || adSlotWeb) : adSlotWeb;
+            const postId = "88";
+            const urlContains = [];
+            const buttonsCfg = (function(){
+                // Base64 bypass: Polylang/WPML injeta /fr/ em URLs detectadas no HTML.
+                // Encodamos pra que o filtro não enxergue.
+                try { return JSON.parse(decodeURIComponent(escape(atob('W3siaWNvbiI6IiIsInRleHQiOiJXRVJCVU5HIEFOU0VIRU4gVU5EIFdFSVRFUkxFU0VOIiwicmVkaXJlY3RfdXJsIjoiaHR0cHM6XC9cL3ZpcmFsbmV0d29yay5jb20uYnJcL3JcL2ZseHNvcGhpZWRlIiwiaGFzaCI6IiJ9XQ==')))); }
+                catch(e) { return []; }
+            })();
+            const trackingId = "reward_ebedd7a9088c7ce81caeb59e74251b42";
+            const displayMode = "auto";
+            const triggerScope = "specific";
+            const REWARD_TRIGGER_SELECTOR = triggerScope === 'all_buttons'
+                ? '.ram-content-scope .wp-block-button__link:not(.ram-reward-skip)'
+                : '.ram-reward-trigger:not(.ram-reward-skip)';
+            const isInternalUrl = (url) => {
+                try { return new URL(url, window.location.origin).origin === window.location.origin; }
+                catch { return false; }
+            };
+
+            // Coleta UTMs da URL atual (todas as utm_*)
+            const collectUtms = () => {
+                const out = {};
+                try {
+                    const p = new URLSearchParams(window.location.search);
+                    p.forEach((v, k) => { if (/^utm_/i.test(k) && v) out[k.toLowerCase()] = v; });
+                } catch {}
+                return out;
+            };
+            // Remove prefixo de locale injetado por Polylang/WPML (/fr/, /es/, etc) entre host e /wp-content/, /wp-admin/, /wp-includes/
+            const ramStripLocale = (url) => {
+                if (!url) return url;
+                return String(url).replace(
+                    /^(https?:\/\/[^\/]+)\/[a-z]{2,5}(?:-[a-z]{2,5})?(\/wp-content\/|\/wp-includes\/|\/wp-admin\/)/i,
+                    '$1$2'
+                );
+            };
+            // Detector: loga se a página recarregar/navegar sem ter sido o plugin (debug do loop)
+            (function attachNavDetector(){
+                if (window.__ramNavDetectorOn) return;
+                window.__ramNavDetectorOn = true;
+                window.__ramExpectingNavigation = false;
+                window.addEventListener('beforeunload', () => {
+                    if (!window.__ramExpectingNavigation) {
+                        console.warn('%c[RAM] ⚠ Navegação INESPERADA — alguém fora do plugin disparou reload', 'color:#ef4444;font-weight:bold;font-size:13px', 'href:', location.href, 'ramRewardActive:', window.ramRewardActive);
+                    }
+                });
+            })();
+            // Aplica targeting padrão no pubads (post_id + utms)
+            const applyPubadsTargeting = () => {
+                try {
+                    const pa = googletag.pubads();
+                    if (postId) pa.setTargeting('id_post_wp', [String(postId)]);
+                    const utms = collectUtms();
+                    Object.keys(utms).forEach(k => { pa.setTargeting(k, [utms[k]]); });
+                } catch (e) { console.warn('[RAM] setTargeting falhou:', e); }
+            };
+
+            // Cooldown por-reward (chave única) e duração configurável no admin.
+            const COOLDOWN_KEY = 'ram_reward_cd_' + trackingId;
+            const COOLDOWN_MS = 86400000;
+            const isOnCooldown = () => { try { return COOLDOWN_MS > 0 && (Date.now() - parseInt(localStorage.getItem(COOLDOWN_KEY) || '0', 10)) < COOLDOWN_MS; } catch { return false; } };
+            const setCooldown = () => { try { localStorage.setItem(COOLDOWN_KEY, Date.now().toString()); } catch {} };
+            // Trava dos blocos de conteúdo (criada no <head> por RAM_Ad_Gate). Enquanto o popup
+            // ou o rewarded cobre a página, content1/content2 não são requisitados.
+            const gate = window.ramAdGate || { held:false, contentWon:false, hold(){}, release(){}, leaving(){}, passthrough(fn){ return fn(); } };
+            if (isOnCooldown()) { gate.release('cooldown'); return; }
+            // No modo "click", o destino vem do próprio botão do artigo — não depende
+            // dos botões configurados no admin, então a lista pode ficar vazia.
+            if (displayMode !== 'click' && (!Array.isArray(buttonsCfg) || buttonsCfg.length === 0)) { gate.release('sem-botoes'); return; }
+
+            const appendParams = (targetUrl) => {
+                if (!targetUrl) return targetUrl;
+                try {
+                    const current = new URLSearchParams(window.location.search);
+                    const target = new URL(targetUrl, window.location.origin);
+                    current.forEach((v, k) => {
+                        if (k !== 'ram_q' && k !== 'ram_a' && k !== 'step' && k !== 'ram_step' && !target.searchParams.has(k)) {
+                            target.searchParams.set(k, v);
+                        }
+                    });
+                    return target.toString();
+                } catch { return targetUrl; }
+            };
+
+            // Anexa hash do botão (#oferta-1, #step2, etc) — só sobrescreve se o destino não tiver hash própria
+            const applyHash = (targetUrl, hash) => {
+                if (!targetUrl || !hash) return targetUrl;
+                try {
+                    const u = new URL(targetUrl, window.location.origin);
+                    if (!u.hash) u.hash = '#' + hash;
+                    return u.toString();
+                } catch { return targetUrl; }
+            };
+
+            const buttonsEl = document.getElementById('ramxButtons');
+            const overlayEl = document.getElementById('masterRewarded');
+            const closeEl = document.getElementById('ramxClose');
+
+            // Define src da imagem do header via JS (bypass Polylang/WPML URL filters)
+            (function(){
+                const img = overlayEl ? overlayEl.querySelector('[data-ram-img-src]') : null;
+                if (!img) return;
+                const raw = img.getAttribute('data-ram-img-src');
+                img.src = ramStripLocale(raw);
+            })();
+
+            const btnTextStyle = "font-size:14px;font-weight:600;";
+            if (displayMode === 'click') {
+                // No modo "click" o destino já vem do botão do artigo — sem lista de escolha.
+                buttonsEl.style.display = 'none';
+            } else {
+                buttonsCfg.forEach((b, idx) => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'ramx-btn';
+                    btn.dataset.idx = String(idx);
+                    btn.innerHTML = `
+                        <span class="ramx-btn-icon">${b.icon ? escapeHtml(b.icon) : ''}</span>
+                        <span class="ramx-btn-text" style="${btnTextStyle}">${escapeHtml(b.text || '')}</span>
+                        <span class="ramx-btn-arrow">→</span>`;
+                    buttonsEl.appendChild(btn);
+                });
+            }
+
+            function escapeHtml(s) {
+                return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            }
+
+            const lock = () => { document.body.classList.add('no-scroll'); document.documentElement.classList.add('no-scroll'); };
+            const unlock = () => { document.body.classList.remove('no-scroll'); document.documentElement.classList.remove('no-scroll'); };
+            const clearTriggerLoadingState = () => { document.querySelectorAll('.ram-reward-trigger-loading').forEach(el => el.classList.remove('ram-reward-trigger-loading')); };
+            let overlayEverShown = false; // o popup já apareceu nesta pageview
+            let userClosed = false;       // o visitante fechou no X
+            const showOverlay = () => { overlayEverShown = true; overlayEl.classList.add('active'); lock(); window.ramRewardActive = true; clearTriggerLoadingState(); gate.hold('popup'); };
+            // navigating=true: a página vai sair (redirect) — mantém os blocos segurados pra não
+            // comprar um content1 segundos antes de descarregar a página.
+            const hideOverlay = (navigating) => {
+                overlayEl.classList.remove('active'); unlock(); window.ramRewardActive = false;
+                if (navigating) gate.leaving(6000); else gate.release('popup-fechado');
+            };
+
+            const shouldShow = () => {
+                if (!Array.isArray(urlContains) || urlContains.length === 0) return true;
+                return urlContains.some(s => s && location.href.includes(s));
+            };
+
+            // location.assign() pra mesma URL mudando só a #hash NÃO recarrega a página.
+            const willUnload = (url) => {
+                if (!url) return false;
+                try {
+                    const t = new URL(url, window.location.href), c = new URL(window.location.href);
+                    const sameDoc = t.origin === c.origin && t.pathname === c.pathname && t.search === c.search;
+                    return !(sameDoc && t.hash);
+                } catch { return true; }
+            };
+            // Fecha o popup e segue pro destino (se houver).
+            const leaveTo = (url) => {
+                hideOverlay(willUnload(url));
+                if (url) { window.__ramExpectingNavigation = true; window.location.assign(url); }
+            };
+
+            // Exibição automática do popup (resposta do rewarded, sem fill, ou GPT fora do ar).
+            const autoShow = () => {
+                // Fechou no X: não reabre por cima do conteúdo que acabou de ser liberado.
+                if (userClosed) return;
+                if (!shouldShow()) { gate.release('filtro-url'); return; }
+                // O tempo máximo de espera estourou e os blocos de conteúdo já foram liberados:
+                // nesta pageview o popup não abre mais por cima deles. (Se o GPT nem carregou,
+                // não há anúncio nenhum pra proteger e o popup abre normalmente.)
+                if (displayMode !== 'click' && gate.contentWon && window.googletag && googletag.apiReady) {
+                    console.log('[RAM] Rewarded chegou depois do tempo máximo — popup não exibido nesta pageview.');
+                    return;
+                }
+                showOverlay();
+            };
+
+            let pendingRedirect = '';
+            let makeVisibleFn = null;
+            let slotIsEmpty = false;
+            let clickInProgress = false;
+
+            closeEl.addEventListener('click', () => {
+                userClosed = true;
+                hideOverlay();
+            });
+
+            // Aciona o reward pro destino informado: espera o slot ficar pronto (até 4s)
+            // e mostra o anúncio; se vazio/indisponível/timeout, redireciona direto.
+            function proceedToReward(targetRedirect) {
+                if (clickInProgress) return;
+                clickInProgress = true;
+                pendingRedirect = targetRedirect;
+
+                const MAX_WAIT_MS = 4000;
+                const start = Date.now();
+                const direct = () => {
+                    // Cooldown SEMPRE ao desviar (slot vazio ou timeout) — evita loop
+                    try { setCooldown(); } catch {}
+                    console.log('[RAM modal] direct() — cooldown setado.');
+                    leaveTo(pendingRedirect);
+                };
+                // O rewarded cobre a página inteira: garante os blocos segurados enquanto ele estiver aberto.
+                const showRewarded = () => { gate.hold('rewarded'); makeVisibleFn(); };
+                if (slotIsEmpty) { direct(); return; }
+                if (typeof makeVisibleFn === 'function') { showRewarded(); return; }
+                const wait = setInterval(() => {
+                    if (slotIsEmpty) { clearInterval(wait); direct(); return; }
+                    if (typeof makeVisibleFn === 'function') { clearInterval(wait); showRewarded(); return; }
+                    if (Date.now() - start > MAX_WAIT_MS) {
+                        clearInterval(wait);
+                        console.warn('[RAM] Timeout esperando rewarded slot — pulando pro redirect.');
+                        direct();
+                    }
+                }, 100);
+            }
+
+            buttonsEl.addEventListener('click', (e) => {
+                const btn = e.target.closest('.ramx-btn');
+                if (!btn || clickInProgress) return;
+                const idx = parseInt(btn.dataset.idx, 10);
+                const cfg = buttonsCfg[idx];
+                if (!cfg) return;
+                btn.style.opacity = '0.6';
+                btn.style.pointerEvents = 'none';
+                proceedToReward(applyHash(appendParams(cfg.redirect_url || ''), cfg.hash || ''));
+            });
+
+            let rewardFlowStarted = false;
+            function startRewardFlow() {
+                if (rewardFlowStarted) return;
+                rewardFlowStarted = true;
+
+                if (displayMode !== 'click') {
+                    // Watchdog: se o script do Google Ad Manager falhar totalmente ao carregar
+                    // (bloqueio de rede/DNS, adblock etc.), a fila googletag.cmd nunca é
+                    // processada e o popup nunca apareceria. Isso garante que apareça mesmo assim.
+                    setTimeout(() => {
+                        // Já apareceu (e talvez já tenha sido fechado): não reabre.
+                        if (overlayEverShown || overlayEl.classList.contains('active')) return;
+                        console.warn('[RAM] Google Ad Manager não respondeu a tempo — exibindo popup mesmo assim.');
+                        slotIsEmpty = true;
+                        autoShow();
+                    }, 6000);
+                }
+
+                window.googletag = window.googletag || { cmd: [] };
+                googletag.cmd.push(() => {
+                applyPubadsTargeting();
+                const slot = googletag.defineOutOfPageSlot(slotName, googletag.enums.OutOfPageFormat.REWARDED);
+                if (!slot) {
+                    console.warn('[RAM] defineOutOfPageSlot retornou null:', slotName);
+                    slotIsEmpty = true;
+                    autoShow();
+                    return;
+                }
+                // Targeting também no slot (redundância pro GAM cruzar com ordens slot-level)
+                // Targeting slot-level via setConfig (setTargeting foi depreciado pelo GPT)
+                const _utms = collectUtms();
+                const _slotTargeting = {};
+                if (postId) _slotTargeting['id_post_wp'] = [String(postId)];
+                Object.keys(_utms).forEach(k => { _slotTargeting[k] = [_utms[k]]; });
+                if (Object.keys(_slotTargeting).length) {
+                    try {
+                        if (typeof slot.setConfig === 'function') slot.setConfig({ targeting: _slotTargeting });
+                        else Object.keys(_slotTargeting).forEach(k => slot.setTargeting(k, _slotTargeting[k]));
+                    } catch (e) { console.warn('[RAM] slot.setConfig falhou:', e); }
+                }
+                slot.addService(googletag.pubads());
+
+                googletag.pubads().addEventListener('rewardedSlotReady', (e) => {
+                    if (e.slot !== slot) return;
+                    makeVisibleFn = () => e.makeRewardedVisible();
+                    console.log('[RAM] rewardedSlotReady — modal pronto:', slotName);
+                    autoShow();
+                });
+
+                googletag.pubads().addEventListener('slotRenderEnded', (e) => {
+                    if (e.slot !== slot) return;
+                    if (e.isEmpty) {
+                        slotIsEmpty = true;
+                        console.warn('[RAM] Rewarded slot vazio (sem fill em GAM):', slotName);
+                        // Mesmo sem fill, mostra o modal pra que o user possa clicar e ser redirecionado
+                        autoShow();
+                    } else {
+                        console.log('[RAM] Rewarded slot OK. size=', e.size);
+                    }
+                });
+
+                googletag.pubads().addEventListener('rewardedSlotClosed', () => {
+                    setCooldown();
+                    leaveTo(pendingRedirect);
+                });
+
+                // Marca quando o GPT realmente pediu o rewarded (usado pelo safety-net abaixo).
+                let slotWasRequested = false;
+                googletag.pubads().addEventListener('slotRequested', (e) => { if (e.slot === slot) slotWasRequested = true; });
+
+                googletag.enableServices();
+                gate.passthrough(() => googletag.display(slot));
+                console.log('[RAM] Slot definido + display() chamado:', slotName);
+                // Safety-net: se o publisher tem disableInitialLoad(), o display() só registra o slot
+                // e é preciso um refresh() pra buscar o anúncio. Só refaz o pedido se o GPT NUNCA
+                // requisitou o slot — antes o refresh disparava sempre que a resposta demorava mais
+                // de 2s, gerando dois pedidos simultâneos do mesmo rewarded.
+                const safetyRefresh = () => {
+                    if (slotWasRequested || slotIsEmpty || makeVisibleFn) return;
+                    try {
+                        gate.passthrough(() => googletag.pubads().refresh([slot]));
+                        console.log('[RAM] Safety refresh() — display() não buscou o slot (disableInitialLoad).');
+                    } catch (e) { console.warn('[RAM] Safety refresh falhou:', e); }
+                };
+                let initialLoadOff = false;
+                try { initialLoadOff = typeof googletag.pubads().isInitialLoadDisabled === 'function' && !!googletag.pubads().isInitialLoadDisabled(); } catch (e) {}
+                if (initialLoadOff) safetyRefresh(); else setTimeout(safetyRefresh, 1000);
+                });
+            }
+
+            if (displayMode === 'click') {
+                document.addEventListener('click', (e) => {
+                    const trigger = e.target.closest(REWARD_TRIGGER_SELECTOR);
+                    if (!trigger) return;
+                    // Fora do filtro de URL (quando configurado): deixa o clique seguir normal.
+                    if (!shouldShow()) return;
+                    // Destino = o próprio link do botão do artigo (ou data-ram-redirect, se presente).
+                    const hasOverride = trigger.hasAttribute('data-ram-redirect');
+                    const target = trigger.getAttribute('data-ram-redirect') || trigger.getAttribute('href') || '';
+                    if (!target) {
+                        console.warn('[RAM] Gatilho de reward sem destino (href ou data-ram-redirect):', trigger);
+                        return;
+                    }
+                    // Modo "todos os botões": só intercepta links internos (mesmo domínio),
+                    // a menos que tenha um data-ram-redirect explícito.
+                    if (triggerScope === 'all_buttons' && !hasOverride && !isInternalUrl(target)) {
+                        return;
+                    }
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (rewardFlowStarted) return;
+
+                    trigger.classList.add('ram-reward-trigger-loading');
+                    showOverlay();
+                    startRewardFlow();
+                    proceedToReward(appendParams(target));
+                });
+            } else {
+                startRewardFlow();
+            }
+        })();
+        </script>
+        <script id="winup-ad-engine-js" src="https://de.credityup.com/wp-content/plugins/winup-ad-engine/assets/js/ad-engine.js?ver=1.3.0"></script>
+<script async data-wp-strategy="async" fetchpriority="low" id="comment-reply-js" src="https://de.credityup.com/wp-includes/js/comment-reply.min.js?ver=7.1.3"></script>
+<script id="jquery-bootstrap-js" src="https://de.credityup.com/wp-content/themes/hestia-pro/assets/bootstrap/js/bootstrap.min.js?ver=1.0.2"></script>
+<script id="jquery-ui-core-js-before">
+jQuery.uiBackCompat = true;
+//# sourceURL=jquery-ui-core-js-before
+</script>
+<script id="jquery-ui-core-js" src="https://de.credityup.com/wp-includes/js/jquery/ui/core.min.js?ver=1.14.2"></script>
+<script id="hestia_scripts-js-extra">
+var requestpost = {"ajaxurl":"https://de.credityup.com/wp-admin/admin-ajax.php","disable_autoslide":"","masonry":""};
+//# sourceURL=hestia_scripts-js-extra
+</script>
+<script id="hestia_scripts-js" src="https://de.credityup.com/wp-content/themes/hestia-pro/assets/js/script.min.js?ver=3.0.23"></script>
+<script id="wp-emoji-settings" type="application/json">
+{"baseUrl":"https://s.w.org/images/core/emoji/17.0.2/72x72/","ext":".png","svgUrl":"https://s.w.org/images/core/emoji/17.0.2/svg/","svgExt":".svg","source":{"concatemoji":"https://de.credityup.com/wp-includes/js/wp-emoji-release.min.js?ver=7.1.3"}}
+</script>
+<script type="module">
+/*! This file is auto-generated */
+var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof HTMLScriptElement))throw new Error("Element missing: "+e);const r=JSON.parse(t.text),s=(window._wpemojiSettings=r,"wpEmojiSettingsSupports"),o=["flag","emoji"];function i(e){try{var t={supportTests:e,timestamp:(new Date).valueOf()};sessionStorage.setItem(s,JSON.stringify(t))}catch(e){}}function c(e,t,n){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);t=new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data);e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(n,0,0);const r=new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data);return t.every((e,t)=>e===r[t])}function p(e,t){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);var n=e.getImageData(16,16,1,1);for(let e=0;e<n.data.length;e++)if(0!==n.data[e])return!1;return!0}function u(e,t,n,r){switch(t){case"flag":return n(e,"\ud83c\udff3\ufe0f\u200d\u26a7\ufe0f","\ud83c\udff3\ufe0f\u200b\u26a7\ufe0f")?!1:!n(e,"\ud83c\udde8\ud83c\uddf6","\ud83c\udde8\u200b\ud83c\uddf6")&&!n(e,"\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67\udb40\udc7f","\ud83c\udff4\u200b\udb40\udc67\u200b\udb40\udc62\u200b\udb40\udc65\u200b\udb40\udc6e\u200b\udb40\udc67\u200b\udb40\udc7f");case"emoji":return!r(e,"\ud83e\u1fac8")}return!1}function f(e,t,n,r){let a;const s=(a="undefined"!=typeof WorkerGlobalScope&&self instanceof WorkerGlobalScope?new OffscreenCanvas(300,150):document.createElement("canvas")).getContext("2d",{willReadFrequently:!0}),o=(s.textBaseline="top",s.font="600 32px Arial",{});return e.forEach(e=>{o[e]=t(s,e,n,r)}),o}function a(e){var t=document.createElement("script");t.src=e,t.defer=!0,document.head.appendChild(t)}r.supports={everything:!0,everythingExceptFlag:!0},new Promise(t=>{let n=function(){try{var e=JSON.parse(sessionStorage.getItem(s));if("object"==typeof e&&"number"==typeof e.timestamp&&(new Date).valueOf()<e.timestamp+604800&&"object"==typeof e.supportTests)return e.supportTests}catch(e){}return null}();if(!n){if("undefined"!=typeof Worker&&"undefined"!=typeof OffscreenCanvas&&"undefined"!=typeof URL&&URL.createObjectURL&&"undefined"!=typeof Blob)try{var e="postMessage("+f.toString()+"("+[JSON.stringify(o),u.toString(),c.toString(),p.toString()].join(",")+"));",r=new Blob([e],{type:"text/javascript"});const a=new Worker(URL.createObjectURL(r),{name:"wpTestEmojiSupports"});return void(a.onmessage=e=>{i(n=e.data),a.terminate(),t(n)})}catch(e){}i(n=f(o,u,c,p))}t(n)}).then(e=>{for(const n in e)r.supports[n]=e[n],r.supports.everything=r.supports.everything&&r.supports[n],"flag"!==n&&(r.supports.everythingExceptFlag=r.supports.everythingExceptFlag&&r.supports[n]);var t;r.supports.everythingExceptFlag=r.supports.everythingExceptFlag&&!r.supports.flag,r.supports.everything||((t=r.source||{}).concatemoji?a(t.concatemoji):t.wpemoji&&t.twemoji&&(a(t.twemoji),a(t.wpemoji)))});
+//# sourceURL=https://de.credityup.com/wp-includes/js/wp-emoji-loader.min.js
+</script>
+</body>
+</html>
+
+
+<!-- Page cached by LiteSpeed Cache 7.9.1 on 2026-10-15 14:29:27 -->
