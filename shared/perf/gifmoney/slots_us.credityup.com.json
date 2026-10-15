@@ -1,0 +1,473 @@
+{
+  "domain": "us.credityup.com",
+  "network": "23340104016",
+  "priceKey": "price",
+  "dateSuffix": "20260930",
+  "active": true,
+  "slots": {
+    "mobile_anchor": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_mobile_anchor_20260930",
+      "sizes": [
+        [
+          320,
+          50
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "mobile_content1": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_mobile_content1_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "mobile_content2": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_mobile_content2_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "mobile_content3": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_mobile_content3_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "mobile_content4": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_mobile_content4_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "mobile_content5": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_mobile_content5_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "mobile_content6": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_mobile_content6_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "mobile_content7": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_mobile_content7_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "mobile_content8": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_mobile_content8_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "mobile_content9": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_mobile_content9_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "mobile_fixed": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_mobile_fixed_20260930",
+      "sizes": [
+        [
+          300,
+          50
+        ],
+        [
+          320,
+          50
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "mobile_interstitial": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_mobile_interstitial_20260930",
+      "sizes": [
+        [
+          1,
+          1
+        ]
+      ],
+      "interstitial": true,
+      "dateSuffix": "20260930"
+    },
+    "mobile_offerwall": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_mobile_offerwall_20260930",
+      "sizes": [
+        [
+          1,
+          1
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "mobile_rewarded": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_mobile_rewarded_20260930",
+      "sizes": [
+        [
+          1,
+          1
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "web_anchor": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_web_anchor_20260930",
+      "sizes": [
+        [
+          728,
+          90
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "web_content1": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_web_content1_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "web_content2": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_web_content2_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "web_content3": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_web_content3_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "web_content4": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_web_content4_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "web_content5": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_web_content5_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "web_content6": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_web_content6_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "web_content7": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_web_content7_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "web_content8": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_web_content8_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "web_content9": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_web_content9_20260930",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "web_fixed": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_web_fixed_20260930",
+      "sizes": [
+        [
+          728,
+          90
+        ],
+        [
+          970,
+          90
+        ],
+        [
+          980,
+          90
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "web_interstitial": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_web_interstitial_20260930",
+      "sizes": [
+        [
+          1,
+          1
+        ]
+      ],
+      "interstitial": true,
+      "dateSuffix": "20260930"
+    },
+    "web_offerwall": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_web_offerwall_20260930",
+      "sizes": [
+        [
+          1,
+          1
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    },
+    "web_rewarded": {
+      "path": "/23340104016/us_credityup_com/us_credityup_com_web_rewarded_20260930",
+      "sizes": [
+        [
+          1,
+          1
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260930"
+    }
+  }
+}

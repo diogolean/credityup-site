@@ -1,0 +1,612 @@
+{
+  "domain": "gifmoney.com",
+  "network": "23340104016",
+  "priceKey": "price",
+  "dateSuffix": "20260831",
+  "active": true,
+  "slots": {
+    "mobile_anchor": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_mobile_anchor_20260831",
+      "sizes": [
+        [
+          320,
+          50
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "mobile_content1": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_mobile_content1_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "mobile_content2": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_mobile_content2_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "mobile_content3": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_mobile_content3_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "mobile_content4": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_mobile_content4_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "mobile_content5": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_mobile_content5_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "mobile_content6": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_mobile_content6_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "mobile_content7": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_mobile_content7_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "mobile_content8": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_mobile_content8_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "mobile_content9": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_mobile_content9_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "mobile_fixed": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_mobile_fixed_20260831",
+      "sizes": [
+        [
+          300,
+          50
+        ],
+        [
+          320,
+          50
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "mobile_interstitial": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_mobile_interstitial_20260831",
+      "sizes": [
+        [
+          1,
+          1
+        ]
+      ],
+      "interstitial": true,
+      "dateSuffix": "20260831"
+    },
+    "mobile_offerwall": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_mobile_offerwall_20260831",
+      "sizes": [
+        [
+          1,
+          1
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "mobile_rewarded": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_mobile_rewarded_20260831",
+      "sizes": [
+        [
+          1,
+          1
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831",
+      "cascadesUtm": [
+        {
+          "utmKey": "utm_medium",
+          "utmValue": "rsm-fb-id104-mkt-yale-usa",
+          "condicoes": [
+            {
+              "chave": "utm_medium",
+              "valor": "rsm-fb-id104-mkt-yale-usa"
+            }
+          ],
+          "id": 6,
+          "base": 700,
+          "lowerBound": 350,
+          "retryLimit": 10,
+          "retryTimeout": 600,
+          "step": "auto",
+          "decayPct": null
+        },
+        {
+          "utmKey": "utm_medium",
+          "utmValue": "rsm-fb-id104-mkt-yale-uk",
+          "condicoes": [
+            {
+              "chave": "utm_medium",
+              "valor": "rsm-fb-id104-mkt-yale-uk"
+            }
+          ],
+          "id": 18,
+          "base": 600,
+          "lowerBound": 220,
+          "retryLimit": 10,
+          "retryTimeout": 600,
+          "step": "auto",
+          "decayPct": null
+        },
+        {
+          "utmKey": "utm_medium",
+          "utmValue": "rsm-fb-id104-mkt-yale-aus",
+          "condicoes": [
+            {
+              "chave": "utm_medium",
+              "valor": "rsm-fb-id104-mkt-yale-aus"
+            }
+          ],
+          "id": 20,
+          "base": 500,
+          "lowerBound": 220,
+          "retryLimit": 8,
+          "retryTimeout": 600,
+          "step": "auto",
+          "decayPct": null
+        },
+        {
+          "utmKey": "utm_medium",
+          "utmValue": "rsm-fb-id145-mkt-usa",
+          "condicoes": [
+            {
+              "chave": "utm_medium",
+              "valor": "rsm-fb-id145-mkt-usa"
+            }
+          ],
+          "id": 19,
+          "base": 600,
+          "lowerBound": 220,
+          "retryLimit": 18,
+          "retryTimeout": 600,
+          "step": "auto",
+          "decayPct": null
+        },
+        {
+          "utmKey": "utm_medium",
+          "utmValue": "rsm-fb-id919-insurance-usa",
+          "condicoes": [
+            {
+              "chave": "utm_medium",
+              "valor": "rsm-fb-id919-insurance-usa"
+            }
+          ],
+          "id": 21,
+          "base": 1050,
+          "lowerBound": 100,
+          "retryLimit": 20,
+          "retryTimeout": 600,
+          "step": "auto",
+          "decayPct": null
+        },
+        {
+          "utmKey": "utm_term",
+          "utmValue": "flow_usa",
+          "condicoes": [
+            {
+              "chave": "utm_term",
+              "valor": "flow_usa"
+            }
+          ],
+          "id": 62,
+          "base": 350,
+          "lowerBound": 120,
+          "retryLimit": 20,
+          "retryTimeout": 600,
+          "step": "auto",
+          "decayPct": null
+        },
+        {
+          "utmKey": "utm_term",
+          "utmValue": "broad_usa",
+          "condicoes": [
+            {
+              "chave": "utm_term",
+              "valor": "broad_usa"
+            }
+          ],
+          "id": 48,
+          "base": 300,
+          "lowerBound": 120,
+          "retryLimit": 20,
+          "retryTimeout": 600,
+          "step": "auto",
+          "decayPct": null
+        },
+        {
+          "utmKey": "utm_medium",
+          "utmValue": "rsm-fb-id974-musa-usa",
+          "condicoes": [
+            {
+              "chave": "utm_medium",
+              "valor": "rsm-fb-id974-musa-usa"
+            }
+          ],
+          "id": 98,
+          "base": 200,
+          "lowerBound": 100,
+          "retryLimit": 20,
+          "retryTimeout": 600,
+          "step": "auto",
+          "decayPct": null
+        }
+      ],
+      "cascadePath": "/23340104016/gifmoney_com/gifmoney_com_mobile_rewarded_cascade1_20260831"
+    },
+    "web_anchor": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_web_anchor_20260831",
+      "sizes": [
+        [
+          728,
+          90
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "web_content1": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_web_content1_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "web_content2": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_web_content2_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "web_content3": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_web_content3_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "web_content4": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_web_content4_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "web_content5": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_web_content5_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "web_content6": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_web_content6_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "web_content7": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_web_content7_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "web_content8": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_web_content8_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "web_content9": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_web_content9_20260831",
+      "sizes": [
+        [
+          250,
+          250
+        ],
+        [
+          300,
+          250
+        ],
+        [
+          336,
+          280
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "web_fixed": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_web_fixed_20260831",
+      "sizes": [
+        [
+          728,
+          90
+        ],
+        [
+          970,
+          90
+        ],
+        [
+          980,
+          90
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "web_interstitial": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_web_interstitial_20260831",
+      "sizes": [
+        [
+          1,
+          1
+        ]
+      ],
+      "interstitial": true,
+      "dateSuffix": "20260831"
+    },
+    "web_offerwall": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_web_offerwall_20260831",
+      "sizes": [
+        [
+          1,
+          1
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    },
+    "web_rewarded": {
+      "path": "/23340104016/gifmoney_com/gifmoney_com_web_rewarded_20260831",
+      "sizes": [
+        [
+          1,
+          1
+        ]
+      ],
+      "interstitial": false,
+      "dateSuffix": "20260831"
+    }
+  }
+}
