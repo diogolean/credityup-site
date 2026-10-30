@@ -1,0 +1,4 @@
+digital-marketing-certificate-top-business-schools.after     n=4 score med=82 mean=82.5 FCP=1.23s LCP med=4.30s mean=4.33s TBT=92ms CLS=0.001 LCPs=[3.8, 4.9, 4.8, 3.8]
+digital-marketing-certificate-top-business-schools.before    n=4 score med=78 mean=79.2 FCP=1.24s LCP med=4.85s mean=4.62s TBT=120ms CLS=0.001 LCPs=[4.9, 3.8, 4.8, 5.0]
+instant-matchmaking-apps-lp-02.after                         n=10 score med=84 mean=83.4 FCP=1.44s LCP med=4.29s mean=3.91s TBT=124ms CLS=0.000 LCPs=[4.4, 4.3, 3.2, 4.3, 4.4, 4.3, 4.3, 3.2, 3.4, 3.2]
+instant-matchmaking-apps-lp-02.before                        n=10 score med=82 mean=82.4 FCP=1.39s LCP med=4.28s mean=3.88s TBT=150ms CLS=0.000 LCPs=[4.3, 4.3, 3.2, 3.2, 4.3, 3.2, 4.4, 4.3, 4.3, 3.2]
