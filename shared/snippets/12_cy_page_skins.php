@@ -21,7 +21,7 @@ if (!function_exists('cy_skin_for_current_page')) {
 }
 /* Header color for the romance skin: 'pink' (same gradient as the title band, .header-filter-gradient
    #a81d84 -> #ea396f) or 'black'. Change this one word to switch. */
-if (!defined('CY_ROMANCE_HEADER')) define('CY_ROMANCE_HEADER', 'pink');
+if (!defined('CY_ROMANCE_HEADER')) define('CY_ROMANCE_HEADER', 'black');
 
 add_filter('body_class', function ($c) {
     $s = cy_skin_for_current_page();
