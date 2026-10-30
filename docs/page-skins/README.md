@@ -10,3 +10,8 @@ Snippet: `shared/snippets/12_cy_page_skins.php` (Code Snippets, "Only run on sit
 ~3 KB of inline CSS on page 100 only, no JS, no extra requests. Does not touch wads.js/ad slots, quiz, GA4, Meta pixel, HFCM.
 Backups: `backups/2026-10-30-before-skins/`. Lighthouse (local, mobile, ads blocked, 10 interleaved runs): `lighthouse_final_summary.txt`.
 Rollback: deactivate the snippet + LiteSpeed "Purge all".
+
+## v2 – romance header (pink / black) + heart logo
+- Switch: `CY_ROMANCE_HEADER` in `shared/snippets/12_cy_page_skins.php` (`pink` default = title-band gradient #a81d84→#ea396f, or `black` #0a0a0a).
+- Logo: `shared/assets/logo_romance_white.webp` (old heart logo, text recolored white), inlined as data URI in CSS — no extra request, CY speed v4 untouched.
+- Screenshots: `screenshots/v2/`. Lighthouse (local, ads blocked): `lighthouse_v2_header_summary.txt`.
