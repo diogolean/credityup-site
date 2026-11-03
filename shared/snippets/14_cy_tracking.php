@@ -18,6 +18,11 @@
  * event_id (also passed as {eventID} for future CAPI dedupe). UTMs + fbclid are persisted 30 days in
  * the first-party cookie "cy_attr" (last non-empty touch wins), so later pages keep attribution.
  *
+ * Standard mirrors (optimisable by Messenger/website ad sets, which reject custom conversions):
+ *  Subscribe  fired right after CY_Rewarded_Complete  value 0 (no eCPM known client-side), currency USD
+ *  Purchase   fired right after CY_Offerwall_Paid      value = number in price_key (e.g. "p250" -> 250) else 0
+ *  Same context params + cy_event; eventID = custom event_id + '_std'. Same pixel only (no init).
+ *
  * Existing events are KEPT (see docs/tracking/README.md): Lead "Rewarded_Ad_Completed(_EN)",
  * InitiateCheckout, Offerwall_Ready/Shown/Completed. Nothing is duplicated under the same name.
  *
@@ -35,6 +40,8 @@ if ( ! function_exists( 'cy_trk_script' ) ) {
   if (w.cyTrk14) return; w.cyTrk14 = 1;
   var CK = 'cy_attr', KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'fbclid'];
   var fired = {}, q = [], timer = null, tries = 0;
+  var STD = { CY_Rewarded_Complete: 'Subscribe', CY_Offerwall_Paid: 'Purchase' };
+  function num(v) { var m = String(v || '').match(/\d+(?:\.\d+)?/); return m ? parseFloat(m[0]) : 0; }
   function readCookie() {
     var m = d.cookie.match(/(?:^|;\s*)cy_attr=([^;]*)/);
     try { return m ? JSON.parse(decodeURIComponent(m[1])) : {}; } catch (e) { return {}; }
@@ -56,7 +63,15 @@ if ( ! function_exists( 'cy_trk_script' ) ) {
   function tgt(slot, k) { try { var v = slot.getTargeting(k); return v && v.length ? String(v[0]) : ''; } catch (e) { return ''; } }
   function flush() {
     if (typeof w.fbq === 'function') {
-      while (q.length) { var a = q.shift(); try { w.fbq('trackCustom', a[0], a[1], { eventID: a[1].event_id }); } catch (e) {} }
+      while (q.length) {
+        var a = q.shift(), sn = STD[a[0]];
+        try { w.fbq('trackCustom', a[0], a[1], { eventID: a[1].event_id }); } catch (e) {}
+        if (sn) {
+          var sp = { value: num(a[1].price_key), currency: 'USD', cy_event: a[0] };
+          for (var k in a[1]) if (!(k in sp)) sp[k] = a[1][k];
+          try { w.fbq('track', sn, sp, { eventID: a[1].event_id + '_std' }); } catch (e) {}
+        }
+      }
       clearInterval(timer); timer = null; return;
     }
     if (++tries > 120) { clearInterval(timer); timer = null; q = []; }

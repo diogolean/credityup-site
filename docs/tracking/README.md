@@ -38,3 +38,18 @@ Limits:
 - `InitiateCheckout` "Quiz_Option_Clicked" stays (it fires on any button click, so it is noisy).
 - `Offerwall_Ready/Shown/Completed` (inline `cy-offerwall-event`) stay. `Offerwall_Shown` fires on any render or viewable event. `CY_Offerwall_Paid` is the stricter, once-per-page paid-fill signal with price context.
 - Later, after the new events have data: build a LAL on `CY_Rewarded_Complete` + `CY_Offerwall_Paid` and compare it with the current one. Retire the noisy ones only after that.
+
+## Standard-event mirrors (Subscribe / Purchase)
+
+Meta rejects custom conversions as the optimisation goal of click-to-Messenger ad sets
+(error 1885014), so snippet 14 also fires a **standard** event right after each revenue event,
+on the same pixel the page already loads (no `fbq('init')`):
+
+| Custom event | Standard mirror | value | eventID |
+|---|---|---|---|
+| `CY_Rewarded_Complete` | `Subscribe` | `0` (no eCPM known client-side) | `<event_id>_std` |
+| `CY_Offerwall_Paid` | `Purchase` | number in `price_key` (e.g. `p250` → 250), else `0` | `<event_id>_std` |
+
+Both carry `currency: 'USD'`, `cy_event`, and the same block/page/UTM/fbclid context.
+`Subscribe` and `Purchase` were unused on these pixels before, so they are clean optimisation signals.
+Note: `value` is a price-rule tier hint, not real revenue — don't use value optimisation/ROAS on it.

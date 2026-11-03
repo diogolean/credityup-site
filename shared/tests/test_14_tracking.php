@@ -14,7 +14,7 @@ $html = cy_trk_script();
 t( 'hooked on wp_head', isset( $GLOBALS['_actions']['wp_head'] ) );
 t( 'never inits a pixel', strpos( $html, "'init'" ) === false && strpos( $html, '2574163523103706' ) === false );
 t( 'no network requests', ! preg_match( '/fetch\(|sendBeacon|XMLHttpRequest/', $html ) );
-t( 'small (< 4KB)', strlen( $html ) < 4096 );
+t( 'small (< 5KB)', strlen( $html ) < 5120 );
 t( 'no Lead/InitiateCheckout dup', ! preg_match( "/'(Lead|InitiateCheckout|Rewarded_Ad_Completed)/", $html ) );
 
 $js = preg_replace( '#</?script[^>]*>#', '', $html );
@@ -46,10 +46,16 @@ function run( $js, $h, $qs, $ck = '' ) {
 	if ( $e ) { echo $e; } return json_decode( $o, true );
 }
 $r = run( $js, $harness, '?utm_source=fb&utm_campaign=lal1&fbclid=ABC&x=1' );
+$all = $r['out'];
+$std = array_values( array_filter( $all, function ( $a ) { return $a[0] === 'track'; } ) );
+$r['out'] = array_values( array_filter( $all, function ( $a ) { return $a[0] === 'trackCustom'; } ) );
 $names = array_map( function ( $a ) { return $a[1]; }, $r['out'] );
-t( 'all calls are trackCustom', count( array_filter( $r['out'], function ( $a ) { return $a[0] !== 'trackCustom'; } ) ) === 0 );
+t( 'only trackCustom + track calls', count( $r['out'] ) + count( $std ) === count( $all ) );
 t( 'exact event sequence (dedup + offerwall excluded from rewarded)', $names === array( 'CY_Rewarded_View', 'CY_Rewarded_Complete', 'CY_Offerwall_Paid' ) );
+t( 'full order: std right after its custom', array_map( function ( $a ) { return $a[1]; }, $all ) === array( 'CY_Rewarded_View', 'CY_Rewarded_Complete', 'Subscribe', 'CY_Offerwall_Paid', 'Purchase' ) );
 $rc = $r['out'][1][2]; $ow = $r['out'][2][2];
+t( 'Subscribe: value 0 USD, context, eventID _std', $std[0][2]['value'] === 0 && $std[0][2]['currency'] === 'USD' && $std[0][2]['block'] === 'rewarded_quiz' && $std[0][2]['utm_campaign'] === 'lal1' && $std[0][2]['cy_event'] === 'CY_Rewarded_Complete' && $std[0][3]['eventID'] === $rc['event_id'] . '_std' );
+t( 'Purchase: value from price_key, context, eventID _std', $std[1][2]['value'] === 250 && $std[1][2]['currency'] === 'USD' && $std[1][2]['line_item_id'] === 123 && $std[1][3]['eventID'] === $ow['event_id'] . '_std' );
 t( 'rewarded params: block/page/utm/fbclid', $rc['block'] === 'rewarded_quiz' && $rc['page_path'] === '/lp-02/' && $rc['utm_source'] === 'fb' && $rc['utm_campaign'] === 'lal1' && $rc['fbclid'] === 'ABC' );
 t( 'reward payload passed', $rc['reward_type'] === 'coins' && $rc['reward_amount'] === 1 );
 t( 'event_id present and = eventID option', strlen( $rc['event_id'] ) > 6 && $r['out'][1][3]['eventID'] === $rc['event_id'] );
@@ -63,6 +69,6 @@ t( 'no cookie rewrite when url has no utms', $r2['cookie'] === $ck );
 $r3 = run( $js, $harness, '?utm_campaign=new', $ck );
 t( 'new utm overrides, keeps others', $r3['out'][1][2]['utm_campaign'] === 'new' && $r3['out'][1][2]['utm_source'] === 'fb' );
 $r4 = run( $js, $harness, '', 'cy_attr=%7Bbroken' );
-t( 'broken cookie does not break events', count( $r4['out'] ) === 3 );
+t( 'broken cookie does not break events', count( $r4['out'] ) === 5 );
 
 echo "\n$pass passed, $fail failed\n"; exit( $fail ? 1 : 0 );
