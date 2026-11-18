@@ -98,21 +98,33 @@ $slots = credityup_home_slots();
         ?>
     <section class="cy-section" aria-labelledby="cy-archive-title">
         <h2 id="cy-archive-title">From the archive</h2>
-        <ul class="cy-list">
+        <div class="cy-archive-grid">
             <?php while ($archive->have_posts()) : $archive->the_post(); ?>
-            <li>
-                <a href="<?php the_permalink(); ?>">
-                    <h3><?php the_title(); ?></h3>
-                    <p class="cy-meta"><?php echo esc_html(get_the_date('M j, Y')); ?><?php
-                        $cats = get_the_category();
-                        if ($cats) {
-                            echo ' · ' . esc_html($cats[0]->name);
-                        }
-                    ?></p>
-                </a>
-            </li>
+                <?php
+                if (function_exists('credityup_print_archive_card')) {
+                    credityup_print_archive_card();
+                } else {
+                    $date = function_exists('credityup_english_date') ? credityup_english_date() : '';
+                    $excerpt = function_exists('wp_trim_words') ? wp_trim_words(wp_strip_all_tags((string) get_the_excerpt()), 22) : '';
+                    $cats = get_the_category();
+                    $name = ($cats && isset($cats[0]->name)) ? (string) $cats[0]->name : '';
+                    echo '<article class="cy-archive-card"><a href="' . esc_url(get_permalink()) . '">';
+                    echo '<div class="cy-archive-media"></div><div class="cy-archive-body">';
+                    if ($name !== '') {
+                        echo '<p class="cy-archive-chip">' . esc_html($name) . '</p>';
+                    }
+                    echo '<h3>' . esc_html(get_the_title()) . '</h3>';
+                    if ($date !== '') {
+                        echo '<p class="cy-meta">' . esc_html($date) . '</p>';
+                    }
+                    if ($excerpt !== '') {
+                        echo '<p class="cy-card-excerpt">' . esc_html($excerpt) . '</p>';
+                    }
+                    echo '</div></a></article>';
+                }
+                ?>
             <?php endwhile; ?>
-        </ul>
+        </div>
     </section>
         <?php
         wp_reset_postdata();

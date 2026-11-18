@@ -107,6 +107,16 @@ def main():
         fail("topic page has no room for future articles")
     if "cy-rewarded-controller" not in home_php:
         fail("rewarded controller script missing")
+    if "cy-slot-collapse" not in home_php or "cy-slot-empty" not in (plugin / "assets/home.css").read_text(encoding="utf-8"):
+        fail("empty ad-slot collapse missing")
+    if "cy-archive-grid" not in home or "credityup_english_date" not in home_php:
+        fail("home archive cards or English dates missing")
+    if "function_exists('credityup_print_slot')" not in topic:
+        fail("archive template is not guarded for a mid-deploy paste")
+    if "credityup_archive_template_ready" not in home_php:
+        fail("template_include is not guarded until the new archive template is present")
+    if "get_the_date(" in home or "get_the_date(" in topic:
+        fail("templates still use the localized get_the_date")
     if "free-credits" not in home_php or "Free Credits" not in home_php:
         fail("free credits topic missing")
     for lp_name in ("us/us_lp-01.html", "us/us_lp-02.html", "shared/snippets/04_rewarded_same_page_fix.html"):

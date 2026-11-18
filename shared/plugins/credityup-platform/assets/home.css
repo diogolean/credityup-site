@@ -312,6 +312,81 @@ winupads[tag="rewarded"] { display: none; }
 
 body.cy-archive .cy-hero h1 { max-width: 18ch; }
 
+
+.cy-slot-empty {
+  display: none !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+}
+
+.cy-archive-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 720px) {
+  .cy-archive-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 960px) {
+  .cy-archive-grid { grid-template-columns: 1fr 1fr 1fr; }
+}
+.cy-archive-card {
+  background: var(--cy-card);
+  border: 1px solid var(--cy-line);
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.cy-archive-card > a {
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.cy-archive-media {
+  aspect-ratio: 16 / 10;
+  background: linear-gradient(145deg, #1e1b4b 0%, #6d28d9 55%, #c4b5fd 100%);
+  overflow: hidden;
+}
+.cy-archive-media--apps { background: linear-gradient(145deg, #0f172a 0%, #1d4ed8 55%, #93c5fd 100%); }
+.cy-archive-media--flirting { background: linear-gradient(145deg, #4c0519 0%, #be185d 55%, #f9a8d4 100%); }
+.cy-archive-media--love { background: linear-gradient(145deg, #3b0764 0%, #6d28d9 55%, #ddd6fe 100%); }
+.cy-archive-media--dating { background: linear-gradient(145deg, #1e1b4b 0%, #4338ca 55%, #a5b4fc 100%); }
+.cy-archive-media--relationships { background: linear-gradient(145deg, #14532d 0%, #0f766e 55%, #99f6e4 100%); }
+.cy-archive-media--free-credits { background: linear-gradient(145deg, #0e0e12 0%, #6d28d9 55%, #e5e7eb 100%); }
+.cy-archive-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.cy-archive-body { padding: 16px 18px 18px; }
+.cy-archive-chip {
+  margin: 0 0 8px;
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f3f0ff;
+  color: var(--cy-purple);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.cy-archive-card h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+.cy-archive-card > a:hover h3 { color: var(--cy-purple); }
+
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }
 }

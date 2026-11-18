@@ -25,6 +25,45 @@ if ($is_credits) {
     $kicker = 'United States · Dating guides';
 }
 
+if (!function_exists('credityup_print_slot')) {
+    function credityup_print_slot($slot) {
+        $tag = isset($slot['tag']) ? preg_replace('/[^a-z0-9_-]/i', '', (string) $slot['tag']) : '';
+        if ($tag === '' || $tag === 'interstitial' || $tag === 'rewarded') {
+            return;
+        }
+        $min = isset($slot['min_height']) ? (int) $slot['min_height'] : 300;
+        $label = isset($slot['label']) ? (string) $slot['label'] : 'Advertisement';
+        echo '<aside class="cy-slot winup-ad-block winup-ad-block-1" style="min-height:' . (int) $min . 'px" aria-label="' . esc_attr($label) . '">';
+        echo '<span class="cy-slot-label">' . esc_html($label) . '</span>';
+        echo '<winupads tag="' . esc_attr($tag) . '" label="' . esc_attr($label) . '"></winupads>';
+        echo '</aside>';
+    }
+}
+if (!function_exists('credityup_archive_slots')) {
+    function credityup_archive_slots() {
+        return array(
+            array('tag' => 'content1', 'min_height' => 300, 'label' => 'Advertisement'),
+            array('tag' => 'content2', 'min_height' => 300, 'label' => 'Advertisement'),
+        );
+    }
+}
+if (!function_exists('credityup_english_date')) {
+    function credityup_english_date($post = null) {
+        if (function_exists('get_post_datetime')) {
+            $dt = get_post_datetime($post);
+            if ($dt instanceof DateTimeInterface) {
+                return $dt->format('M j, Y');
+            }
+        }
+        return '';
+    }
+}
+if (!function_exists('credityup_primary_nav')) {
+    function credityup_primary_nav() {
+        echo '<nav class="cy-nav" aria-label="Primary"></nav>';
+    }
+}
+
 $slots = credityup_archive_slots();
 $content1 = isset($slots[0]) ? $slots[0] : array('tag' => 'content1', 'min_height' => 300, 'label' => 'Advertisement');
 $content2 = isset($slots[1]) ? $slots[1] : array('tag' => 'content2', 'min_height' => 300, 'label' => 'Advertisement');
@@ -74,18 +113,26 @@ $content2 = isset($slots[1]) ? $slots[1] : array('tag' => 'content2', 'min_heigh
     <section class="cy-section" aria-labelledby="cy-articles-title">
         <h2 id="cy-articles-title"><?php echo $is_credits ? 'Articles' : 'In this topic'; ?></h2>
         <?php if (have_posts()) : ?>
-        <div class="cy-cards">
+        <div class="cy-archive-grid">
             <?php while (have_posts()) : the_post(); ?>
-            <article class="cy-card">
-                <h3><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h3>
-                <p class="cy-meta"><?php echo esc_html(get_the_date('M j, Y')); ?></p>
                 <?php
-                $excerpt = wp_trim_words(wp_strip_all_tags(get_the_excerpt()), 28);
-                if ($excerpt !== '') :
-                    ?>
-                <p class="cy-card-excerpt"><?php echo esc_html($excerpt); ?></p>
-                <?php endif; ?>
-            </article>
+                if (function_exists('credityup_print_archive_card')) {
+                    credityup_print_archive_card();
+                } else {
+                    $date = function_exists('credityup_english_date') ? credityup_english_date() : '';
+                    $excerpt = wp_trim_words(wp_strip_all_tags((string) get_the_excerpt()), 22);
+                    echo '<article class="cy-archive-card"><a href="' . esc_url(get_permalink()) . '">';
+                    echo '<div class="cy-archive-media"></div><div class="cy-archive-body">';
+                    echo '<h3>' . esc_html(get_the_title()) . '</h3>';
+                    if ($date !== '') {
+                        echo '<p class="cy-meta">' . esc_html($date) . '</p>';
+                    }
+                    if ($excerpt !== '') {
+                        echo '<p class="cy-card-excerpt">' . esc_html($excerpt) . '</p>';
+                    }
+                    echo '</div></a></article>';
+                }
+                ?>
             <?php endwhile; ?>
         </div>
         <?php else : ?>

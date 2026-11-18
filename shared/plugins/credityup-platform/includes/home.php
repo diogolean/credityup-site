@@ -44,11 +44,32 @@ function credityup_ensure_free_credits_category() {
 }
 add_action('init', 'credityup_ensure_free_credits_category');
 
+function credityup_archive_template_path() {
+    if (!defined('CREDITYUP_PLATFORM_DIR')) {
+        return '';
+    }
+    return CREDITYUP_PLATFORM_DIR . 'templates/free-credits.php';
+}
+
+function credityup_archive_template_ready($path = '') {
+    if ($path === '') {
+        $path = credityup_archive_template_path();
+    }
+    if ($path === '' || !is_readable($path)) {
+        return false;
+    }
+    $head = @file_get_contents($path, false, null, 0, 1600);
+    return is_string($head) && strpos($head, 'credityup_print_slot') !== false;
+}
+
 function credityup_platform_chrome() {
     if (!credityup_home_enabled()) {
         return false;
     }
-    return is_front_page() || is_category();
+    if (is_front_page() || is_category('free-credits')) {
+        return true;
+    }
+    return is_category() && credityup_archive_template_ready();
 }
 
 function credityup_primary_nav() {
@@ -184,6 +205,53 @@ function credityup_print_slot($slot) {
     echo '</aside>';
 }
 
+function credityup_english_date($post = null) {
+    if (function_exists('get_post_datetime')) {
+        $dt = get_post_datetime($post);
+        if ($dt instanceof DateTimeInterface) {
+            return $dt->format('M j, Y');
+        }
+    }
+    if (function_exists('get_post_timestamp')) {
+        $ts = get_post_timestamp($post);
+        if ($ts) {
+            $tz = function_exists('wp_timezone') ? wp_timezone() : new DateTimeZone('UTC');
+            return (new DateTimeImmutable('@' . (int) $ts))->setTimezone($tz)->format('M j, Y');
+        }
+    }
+    return '';
+}
+
+function credityup_print_archive_card() {
+    $cats = get_the_category();
+    $cat = ($cats && !is_wp_error($cats)) ? $cats[0] : null;
+    $slug = ($cat && !empty($cat->slug)) ? sanitize_title($cat->slug) : 'topic';
+    $name = ($cat && !empty($cat->name)) ? (string) $cat->name : '';
+    $date = credityup_english_date();
+    $excerpt = wp_trim_words(wp_strip_all_tags((string) get_the_excerpt()), 22);
+    echo '<article class="cy-archive-card">';
+    echo '<a href="' . esc_url(get_permalink()) . '">';
+    echo '<div class="cy-archive-media cy-archive-media--' . esc_attr($slug) . '">';
+    if (has_post_thumbnail()) {
+        the_post_thumbnail('medium', array(
+            'class' => 'cy-archive-thumb',
+            'alt' => esc_attr(wp_strip_all_tags(get_the_title())),
+        ));
+    }
+    echo '</div><div class="cy-archive-body">';
+    if ($name !== '') {
+        echo '<p class="cy-archive-chip">' . esc_html($name) . '</p>';
+    }
+    echo '<h3>' . esc_html(get_the_title()) . '</h3>';
+    if ($date !== '') {
+        echo '<p class="cy-meta">' . esc_html($date) . '</p>';
+    }
+    if ($excerpt !== '') {
+        echo '<p class="cy-card-excerpt">' . esc_html($excerpt) . '</p>';
+    }
+    echo '</div></a></article>';
+}
+
 /**
  * Keep a single Rewarded controller on Credityup chrome pages.
  * wads.js only intercepts a click when rewardedSlotReady has fired
@@ -301,15 +369,88 @@ JS;
 }
 add_action('wp_head', 'credityup_rewarded_controller_script', 1);
 
-add_filter('template_include', function ($template) {
+function credityup_slot_collapse_script() {
     if (!credityup_platform_chrome()) {
+        return;
+    }
+    echo "<script id=\"cy-slot-collapse\">\n";
+    echo <<<'JS'
+(function () {
+  function boxFor(ev) {
+    if (!ev || !ev.slot || !ev.slot.getSlotElementId) {
+      return null;
+    }
+    var id = ev.slot.getSlotElementId();
+    if (!id || !document.getElementById) {
+      return null;
+    }
+    var el = document.getElementById(id);
+    return (el && el.closest) ? el.closest('.cy-slot') : null;
+  }
+
+  function apply(box, empty) {
+    if (!box || !box.classList) {
+      return;
+    }
+    if (empty) {
+      box.classList.add('cy-slot-empty');
+      box.classList.remove('cy-slot-filled');
+      box.setAttribute('aria-hidden', 'true');
+    } else {
+      box.classList.add('cy-slot-filled');
+      box.classList.remove('cy-slot-empty');
+      box.removeAttribute('aria-hidden');
+    }
+  }
+
+  function hook() {
+    if (!window.googletag || !window.googletag.cmd) {
+      return false;
+    }
+    window.googletag.cmd.push(function () {
+      var pa = window.googletag.pubads && window.googletag.pubads();
+      if (!pa || pa.cySlotCollapseHooked) {
+        return;
+      }
+      pa.cySlotCollapseHooked = 1;
+      pa.addEventListener('slotRenderEnded', function (ev) {
+        var box = boxFor(ev);
+        if (!box) {
+          return;
+        }
+        apply(box, !!ev.isEmpty);
+      });
+    });
+    return true;
+  }
+
+  var tries = 0;
+  (function wait() {
+    if (hook() || ++tries > 40) {
+      return;
+    }
+    setTimeout(wait, 250);
+  }());
+}());
+JS;
+    echo "\n</script>\n";
+}
+add_action('wp_head', 'credityup_slot_collapse_script', 1);
+
+add_filter('template_include', function ($template) {
+    if (!credityup_home_enabled()) {
         return $template;
     }
-    if (is_category()) {
-        return CREDITYUP_PLATFORM_DIR . 'templates/free-credits.php';
+    if (is_category('free-credits')) {
+        $path = credityup_archive_template_path();
+        return ($path !== '' && is_readable($path)) ? $path : $template;
+    }
+    if (is_category() && credityup_archive_template_ready()) {
+        return credityup_archive_template_path();
     }
     if (is_front_page()) {
-        return CREDITYUP_PLATFORM_DIR . 'templates/front-page.php';
+        $home = CREDITYUP_PLATFORM_DIR . 'templates/front-page.php';
+        return is_readable($home) ? $home : $template;
     }
     return $template;
 });
