@@ -1,0 +1,224 @@
+<!--
+Replace HFCM snippet #2 "Quiz En JS" with this file. Header, sitewide, active.
+LP-01 still ends on /best-easy-dating-apps-lp-01-art01/.
+LP-02 now ends on /instant-matchmaking-apps-lp-02-art01/.
+Steps, values, QuizStarted, Lead, and the result button label are unchanged.
+-->
+<!-- HFCM by 99 Robots - Snippet # 2: Quiz En JS -->
+<script>
+	;(function () {
+	if (window.__qwuEnBound) {
+		return;
+	}
+	window.__qwuEnBound = true;
+	if (!window.document || !document.addEventListener) {
+		return;
+	}
+
+	var PATH = '';
+	try { PATH = String(window.location.pathname || ''); } catch (errPath) { PATH = ''; }
+	var IS_LP2 = PATH.indexOf('/instant-matchmaking-apps-lp-02') !== -1;
+	var CTA_HREF = IS_LP2
+		? 'https://us.credityup.com/instant-matchmaking-apps-lp-02-art01/'
+		: 'https://us.credityup.com/best-easy-dating-apps-lp-01-art01/';
+	var RESULT_TEXT = IS_LP2
+		? 'Next: the free start, then what a boost or premium plan adds.'
+		: 'Next: the free plan, then Tinder Gold, Bumble Premium, and Hinge.';
+	var LOADING_MS = 2500;
+	var ADVANCE_MS = 280;
+	var STEPS = [
+		{
+			question: 'What is your primary goal today?',
+			options: [
+				{ label: 'Quick Casual Meetings', value: 'quick_casual' },
+				{ label: 'Serious Relationship', value: 'serious_relationship' }
+			]
+		},
+		{
+			question: 'What is your age range?',
+			options: [
+				{ label: '18 to 30 years', value: 'age_18_30' },
+				{ label: '31 to 50 years', value: 'age_31_50' },
+				{ label: '50+ years', value: 'age_50_plus' }
+			]
+		},
+		{
+			question: 'What do you value most in a dating app?',
+			options: [
+				{ label: 'Verified & Secure Profiles', value: 'verified_secure' },
+				{ label: 'People Nearby My Location', value: 'people_nearby' }
+			]
+		}
+	];
+
+	function buttonsIn(quiz) {
+		return quiz.querySelectorAll('button.quiz-option-btn');
+	}
+
+	function setProgress(quiz, stepNumber, fraction) {
+		var count = quiz.querySelector('#qwu-en-step-count');
+		var fill = quiz.querySelector('#qwu-en-progress-fill');
+		var bar = quiz.querySelector('#qwu-en-progress');
+		var value = Math.max(0, Math.min(100, Math.round(fraction * 100)));
+		if (count) {
+			count.textContent = stepNumber ? (stepNumber + ' OF 3') : '';
+		}
+		if (fill) {
+			fill.style.width = value + '%';
+		}
+		if (bar) {
+			bar.setAttribute('aria-valuenow', String(value));
+		}
+	}
+
+	function setQuestion(quiz, text, state) {
+		var question = quiz.querySelector('#qwu-en-question');
+		if (!question) {
+			return;
+		}
+		question.textContent = text;
+		if (state) {
+			question.setAttribute('data-state', state);
+		} else {
+			question.removeAttribute('data-state');
+		}
+	}
+
+	function paintButtons(quiz, options) {
+		var buttons = buttonsIn(quiz);
+		var i;
+		for (i = 0; buttons.length > i; i += 1) {
+			if (options && options.length > i) {
+				buttons[i].textContent = options[i].label;
+				buttons[i].disabled = false;
+				buttons[i].setAttribute('data-qwu-active', '1');
+				buttons[i].setAttribute('data-qwu-en-value', options[i].value);
+				buttons[i].removeAttribute('aria-hidden');
+			} else if (options) {
+				buttons[i].textContent = '';
+				buttons[i].disabled = true;
+				buttons[i].setAttribute('data-qwu-active', '0');
+				buttons[i].removeAttribute('data-qwu-en-value');
+				buttons[i].setAttribute('aria-hidden', 'true');
+			}
+		}
+	}
+
+	function paintStep(quiz, index) {
+		var step = STEPS[index];
+		quiz.setAttribute('data-qwu-step', String(index));
+		quiz.setAttribute('data-qwu-phase', 'question');
+		quiz.setAttribute('data-qwu-locked', '0');
+		setQuestion(quiz, step.question, 'question');
+		setProgress(quiz, index + 1, index / STEPS.length);
+		paintButtons(quiz, step.options);
+	}
+
+	function showLoading(quiz) {
+		quiz.setAttribute('data-qwu-phase', 'loading');
+		quiz.setAttribute('data-qwu-locked', '1');
+		setQuestion(quiz, 'Searching available profiles in your region...', 'loading');
+		setProgress(quiz, 0, 1);
+		paintButtons(quiz, []);
+	}
+
+	function showResult(quiz) {
+		quiz.setAttribute('data-qwu-phase', 'result');
+		quiz.setAttribute('data-qwu-locked', '0');
+		setQuestion(quiz, RESULT_TEXT, 'result');
+		setProgress(quiz, 0, 1);
+		if (quiz.getAttribute('data-qwu-lead') !== '1' && window.fbq) {
+			quiz.setAttribute('data-qwu-lead', '1');
+			try {
+				window.fbq('track', 'Lead');
+			} catch (err) {}
+		}
+		paintButtons(quiz, [{ label: 'View Recommended Apps ➔', value: '__cta__' }]);
+	}
+
+	function advance(quiz, val) {
+		var phase = quiz.getAttribute('data-qwu-phase') || 'question';
+		var step;
+		var stepNumber;
+		if (phase === 'result') {
+			if (val === '__cta__' && CTA_HREF) {
+				window.location.href = CTA_HREF;
+			}
+			return;
+		}
+		if (quiz.getAttribute('data-qwu-locked') === '1' || phase !== 'question') {
+			return;
+		}
+		quiz.setAttribute('data-qwu-locked', '1');
+		step = parseInt(quiz.getAttribute('data-qwu-step') || '0', 10);
+		if (isNaN(step)) {
+			step = 0;
+		}
+		stepNumber = step + 1;
+		try {
+			if (stepNumber === 1 && quiz.getAttribute('data-qwu-started') !== '1' && window.fbq) {
+				quiz.setAttribute('data-qwu-started', '1');
+				window.fbq('trackCustom', 'QuizStarted');
+			}
+			if (window.googletag) {
+				window.googletag.cmd = window.googletag.cmd || [];
+				window.googletag.cmd.push(function () {
+					if (window.googletag && window.googletag.pubads) {
+						window.googletag.pubads().setTargeting('quiz_step_' + stepNumber, val);
+					}
+				});
+			}
+		} catch (err) {}
+		setProgress(quiz, stepNumber, stepNumber / STEPS.length);
+		window.setTimeout(function () {
+			if (STEPS.length - 1 > step) {
+				paintStep(quiz, step + 1);
+				return;
+			}
+			showLoading(quiz);
+			window.setTimeout(function () {
+				showResult(quiz);
+			}, LOADING_MS);
+		}, ADVANCE_MS);
+	}
+
+	window.qwuHandleChoiceEn = function (el, val) {
+		var quiz = el && el.closest ? el.closest('#qwu-quiz-en') : document.getElementById('qwu-quiz-en');
+		if (!quiz || !val) {
+			return;
+		}
+		advance(quiz, val);
+	};
+
+	document.addEventListener('click', function (event) {
+		var target = event.target;
+		var button;
+		var quiz;
+		var val;
+		if (target && target.nodeType === 3) {
+			target = target.parentElement;
+		}
+		if (!target || !target.closest) {
+			return;
+		}
+		button = target.closest('.quiz-option-btn');
+		if (!button) {
+			return;
+		}
+		quiz = button.closest('#qwu-quiz-en');
+		if (!quiz) {
+			return;
+		}
+		event.preventDefault();
+		if (button.getAttribute('data-qwu-active') === '0') {
+			return;
+		}
+		val = button.getAttribute('data-qwu-en-value');
+		if (!val) {
+			return;
+		}
+		advance(quiz, val);
+	});
+})();
+</script>
+<!-- /end HFCM by 99 Robots -->
