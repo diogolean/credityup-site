@@ -41,7 +41,7 @@ cy_load($OLD . '/includes/home.php');
 $cy_stub_is_front = true;
 $cy_stub_category = null;
 $html = cy_render($NEW . '/templates/front-page.php', 'C front-page');
-if (strpos($html, 'From the archive') === false) { cy_fail('C new front-page failed with old home.php'); } else { cy_ok('C old home.php + new front-page.php (no fatal)'); }
+if (strpos($html, 'cy-archive-grid') === false) { cy_fail('C new front-page failed with old home.php'); } else { cy_ok('C old home.php + new front-page.php (no fatal)'); }
 $cy_stub_is_front = false;
 $cy_stub_category = 'free-credits';
 $html = cy_render($NEW . '/templates/free-credits.php', 'C free-credits');

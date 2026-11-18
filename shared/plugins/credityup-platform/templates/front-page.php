@@ -88,23 +88,36 @@ $slots = credityup_home_slots();
     </section>
 
     <?php
-    $archive = new WP_Query(array(
-        'post_type' => 'post',
-        'posts_per_page' => 4,
-        'ignore_sticky_posts' => true,
-        'no_found_rows' => true,
-    ));
+    if (function_exists('credityup_home_card_query')) {
+        $archive = credityup_home_card_query();
+    } else {
+        $slugs = array(
+            'best-easy-dating-apps-lp-01-art01',
+            'best-easy-dating-apps-lp-01-art02',
+            'best-easy-dating-apps-lp-01-art03',
+            'instant-matchmaking-apps-lp-02-art01',
+            'instant-matchmaking-apps-lp-02-art02',
+            'instant-matchmaking-apps-lp-02-art03',
+        );
+        $archive = new WP_Query(array(
+            'post_type' => 'post',
+            'post_status' => 'publish',
+            'post_name__in' => $slugs,
+            'orderby' => 'post_name__in',
+            'posts_per_page' => count($slugs),
+            'ignore_sticky_posts' => true,
+            'no_found_rows' => true,
+        ));
+    }
     if ($archive->have_posts()) :
         ?>
-    <section class="cy-section" aria-labelledby="cy-archive-title">
-        <h2 id="cy-archive-title">From the archive</h2>
+    <section class="cy-section" aria-label="Dating articles">
         <div class="cy-archive-grid">
             <?php while ($archive->have_posts()) : $archive->the_post(); ?>
                 <?php
                 if (function_exists('credityup_print_archive_card')) {
                     credityup_print_archive_card();
                 } else {
-                    $date = function_exists('credityup_english_date') ? credityup_english_date() : '';
                     $excerpt = function_exists('wp_trim_words') ? wp_trim_words(wp_strip_all_tags((string) get_the_excerpt()), 22) : '';
                     $cats = get_the_category();
                     $name = ($cats && isset($cats[0]->name)) ? (string) $cats[0]->name : '';
@@ -114,9 +127,6 @@ $slots = credityup_home_slots();
                         echo '<p class="cy-archive-chip">' . esc_html($name) . '</p>';
                     }
                     echo '<h3>' . esc_html(get_the_title()) . '</h3>';
-                    if ($date !== '') {
-                        echo '<p class="cy-meta">' . esc_html($date) . '</p>';
-                    }
                     if ($excerpt !== '') {
                         echo '<p class="cy-card-excerpt">' . esc_html($excerpt) . '</p>';
                     }

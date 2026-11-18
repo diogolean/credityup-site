@@ -390,3 +390,25 @@ body.cy-archive .cy-hero h1 { max-width: 18ch; }
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }
 }
+
+#safety,
+#rewards,
+#content {
+  scroll-margin-top: calc(var(--cy-bar) + 12px);
+}
+.cy-archive-card .cy-meta { display: none; }
+.cy-legal {
+  background: var(--cy-card);
+  border: 1px solid var(--cy-line);
+  border-radius: 16px;
+  padding: 24px 28px 28px;
+  overflow: hidden;
+}
+.cy-legal > *:first-child { margin-top: 0; }
+.cy-legal > *:last-child { margin-bottom: 0; }
+.cy-legal h2,
+.cy-legal h3 {
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+.cy-legal a { color: var(--cy-purple); }

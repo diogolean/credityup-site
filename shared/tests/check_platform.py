@@ -117,6 +117,29 @@ def main():
         fail("template_include is not guarded until the new archive template is present")
     if "get_the_date(" in home or "get_the_date(" in topic:
         fail("templates still use the localized get_the_date")
+    if "From the archive" in home or "From the archive" in topic:
+        fail("From the archive heading is still visible")
+    if "credityup_home_card_slugs" not in home_php:
+        fail("home cards are not curated to monetizing LP articles")
+    for slug in (
+        "best-easy-dating-apps-lp-01-art01",
+        "best-easy-dating-apps-lp-01-art02",
+        "best-easy-dating-apps-lp-01-art03",
+        "instant-matchmaking-apps-lp-02-art01",
+        "instant-matchmaking-apps-lp-02-art02",
+        "instant-matchmaking-apps-lp-02-art03",
+    ):
+        if slug not in home_php and slug not in home:
+            fail(f"home cards missing monetizing slug {slug}")
+    if "home_url('/#safety')" not in home_php:
+        fail("Safety menu is not pointed at the home #safety section")
+    if "credityup_legal_template_ready" not in home_php or "cy-legal" not in topic:
+        fail("legal pages are not wrapped in the new chrome")
+    css = (plugin / "assets/home.css").read_text(encoding="utf-8")
+    if "scroll-margin-top" not in css:
+        fail("Safety anchor can hide under the fixed bar")
+    if "credityup_english_date()" in (plugin / "includes/home.php").read_text(encoding="utf-8").split("function credityup_print_archive_card", 1)[-1].split("function credityup_rewarded_controller_script", 1)[0]:
+        fail("archive cards still print a date")
     if "free-credits" not in home_php or "Free Credits" not in home_php:
         fail("free credits topic missing")
     for lp_name in ("us/us_lp-01.html", "us/us_lp-02.html", "shared/snippets/04_rewarded_same_page_fix.html"):

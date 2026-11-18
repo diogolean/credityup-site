@@ -62,6 +62,51 @@ function credityup_archive_template_ready($path = '') {
     return is_string($head) && strpos($head, 'credityup_print_slot') !== false;
 }
 
+function credityup_legal_slugs() {
+    return array('terms-of-use', 'privacy-policy', 'cookie-policy');
+}
+
+function credityup_is_legal_page() {
+    return function_exists('is_page') && is_page(credityup_legal_slugs());
+}
+
+function credityup_legal_template_ready($path = '') {
+    if ($path === '') {
+        $path = credityup_archive_template_path();
+    }
+    if ($path === '' || !is_readable($path)) {
+        return false;
+    }
+    $src = @file_get_contents($path);
+    return is_string($src) && strpos($src, 'cy-legal') !== false && strpos($src, 'credityup_is_legal_page') !== false;
+}
+
+function credityup_home_card_slugs() {
+    // Current monetizing LP articles. The LP-01 and LP-02 hubs are already
+    // featured in the Dating guides section, so the grid lists their six articles.
+    return array(
+        'best-easy-dating-apps-lp-01-art01',
+        'best-easy-dating-apps-lp-01-art02',
+        'best-easy-dating-apps-lp-01-art03',
+        'instant-matchmaking-apps-lp-02-art01',
+        'instant-matchmaking-apps-lp-02-art02',
+        'instant-matchmaking-apps-lp-02-art03',
+    );
+}
+
+function credityup_home_card_query() {
+    $slugs = credityup_home_card_slugs();
+    return new WP_Query(array(
+        'post_type' => 'post',
+        'post_status' => 'publish',
+        'post_name__in' => $slugs,
+        'orderby' => 'post_name__in',
+        'posts_per_page' => count($slugs),
+        'ignore_sticky_posts' => true,
+        'no_found_rows' => true,
+    ));
+}
+
 function credityup_platform_chrome() {
     if (!credityup_home_enabled()) {
         return false;
@@ -69,7 +114,10 @@ function credityup_platform_chrome() {
     if (is_front_page() || is_category('free-credits')) {
         return true;
     }
-    return is_category() && credityup_archive_template_ready();
+    if (is_category() && credityup_archive_template_ready()) {
+        return true;
+    }
+    return credityup_is_legal_page() && credityup_legal_template_ready();
 }
 
 function credityup_primary_nav() {
@@ -227,7 +275,6 @@ function credityup_print_archive_card() {
     $cat = ($cats && !is_wp_error($cats)) ? $cats[0] : null;
     $slug = ($cat && !empty($cat->slug)) ? sanitize_title($cat->slug) : 'topic';
     $name = ($cat && !empty($cat->name)) ? (string) $cat->name : '';
-    $date = credityup_english_date();
     $excerpt = wp_trim_words(wp_strip_all_tags((string) get_the_excerpt()), 22);
     echo '<article class="cy-archive-card">';
     echo '<a href="' . esc_url(get_permalink()) . '">';
@@ -243,9 +290,6 @@ function credityup_print_archive_card() {
         echo '<p class="cy-archive-chip">' . esc_html($name) . '</p>';
     }
     echo '<h3>' . esc_html(get_the_title()) . '</h3>';
-    if ($date !== '') {
-        echo '<p class="cy-meta">' . esc_html($date) . '</p>';
-    }
     if ($excerpt !== '') {
         echo '<p class="cy-card-excerpt">' . esc_html($excerpt) . '</p>';
     }
@@ -396,10 +440,16 @@ function credityup_slot_collapse_script() {
       box.classList.add('cy-slot-empty');
       box.classList.remove('cy-slot-filled');
       box.setAttribute('aria-hidden', 'true');
+      if (box.style && box.style.setProperty) {
+        box.style.setProperty('display', 'none', 'important');
+      }
     } else {
       box.classList.add('cy-slot-filled');
       box.classList.remove('cy-slot-empty');
       box.removeAttribute('aria-hidden');
+      if (box.style && box.style.removeProperty) {
+        box.style.removeProperty('display');
+      }
     }
   }
 
@@ -451,6 +501,9 @@ add_filter('template_include', function ($template) {
     if (is_front_page()) {
         $home = CREDITYUP_PLATFORM_DIR . 'templates/front-page.php';
         return is_readable($home) ? $home : $template;
+    }
+    if (credityup_is_legal_page() && credityup_legal_template_ready()) {
+        return credityup_archive_template_path();
     }
     return $template;
 });

@@ -70,6 +70,7 @@ class WP_Query {
 
 $cy_stub_is_front = false;
 $cy_stub_category = null;
+$cy_stub_page = null;
 $cy_stub_current = null;
 $post = null;
 $cy_stub_posts = array(
@@ -105,6 +106,20 @@ function is_category($slug = null) {
     return $cy_stub_category === $slug;
 }
 function is_admin() { return false; }
+function is_page($slug = null) {
+    global $cy_stub_page;
+    if (empty($cy_stub_page)) {
+        return false;
+    }
+    if ($slug === null || $slug === '') {
+        return true;
+    }
+    if (is_array($slug)) {
+        return in_array($cy_stub_page, $slug, true);
+    }
+    return $cy_stub_page === $slug;
+}
+function the_content() { echo '<p>Legal body.</p>'; }
 function get_term_by($field, $value, $taxonomy = 'category') {
     if ($value === 'free-credits') {
         return new CY_Stub_Term('free-credits', 'Free Credits', 'Reward credits unlocked by watching an ad.');
@@ -264,7 +279,7 @@ function cy_fail($msg) { global $fails; $fails++; echo "FAIL  $msg\n"; }
 
 // Case A: new home.php + new templates
 function cy_case_a($plugin) {
-    global $cy_stub_is_front, $cy_stub_category, $wp_query;
+    global $cy_stub_is_front, $cy_stub_category, $cy_stub_page, $wp_query;
     if (!defined('CREDITYUP_PLATFORM_DIR')) {
         define('CREDITYUP_PLATFORM_DIR', $plugin . '/');
     }
@@ -275,12 +290,14 @@ function cy_case_a($plugin) {
     $html = cy_render($plugin . '/templates/front-page.php', 'A front-page');
     if (strpos($html, 'cy-archive-grid') === false) {
         cy_fail('A home missing archive grid');
-    } elseif (strpos($html, 'set 30, 2026') !== false) {
-        cy_fail('A home still has Portuguese date');
-    } elseif (strpos($html, 'Sep 30, 2026') === false) {
-        cy_fail('A home missing English date');
+    } elseif (strpos($html, 'set 30, 2026') !== false || strpos($html, 'Sep 30, 2026') !== false) {
+        cy_fail('A home still prints a date on cards');
+    } elseif (strpos($html, 'From the archive') !== false) {
+        cy_fail('A home still has From the archive heading');
+    } elseif (strpos($html, 'id="safety"') === false) {
+        cy_fail('A home is missing the #safety section');
     } else {
-        cy_ok('A front-page renders, English date, archive cards');
+        cy_ok('A front-page renders, no dates, no archive heading, #safety present');
     }
     if (strpos($html, 'cy-archive-thumb') === false) {
         cy_fail('A home missing featured image on a post that has one');
@@ -315,6 +332,24 @@ function cy_case_a($plugin) {
     } else {
         cy_ok('A archive_template_ready detects the new template');
     }
+
+    global $cy_stub_page;
+    $cy_stub_category = null;
+    $cy_stub_page = 'privacy-policy';
+    $html = cy_render($plugin . '/templates/free-credits.php', 'A legal/privacy');
+    if (strpos($html, 'cy-legal') === false) {
+        cy_fail('A legal page missing cy-legal article');
+    } elseif (strpos($html, 'tag="rewarded"') !== false || strpos($html, 'tag="content1"') !== false) {
+        cy_fail('A legal page printed an ad slot');
+    } else {
+        cy_ok('A legal page renders in the new chrome without ad slots');
+    }
+    if (!credityup_legal_template_ready($path)) {
+        cy_fail('A legal_template_ready should be true for the new template');
+    } else {
+        cy_ok('A legal_template_ready detects the new template');
+    }
+    $cy_stub_page = null;
 }
 
 // Case B: new home.php + old templates (already loaded home.php in this process if A ran in same PHP).
