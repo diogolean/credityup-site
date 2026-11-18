@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Credityup Platform
  * Description: Front page for us.credityup.com, quiz email capture with CSV export, and Firebase web push with a soft opt-in. Does not change Winup ad tags, the Rewarded modal, Offerwall redirects, or Meta pixel snippets.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Credityup
  * Requires at least: 6.0
  * Requires PHP: 7.4
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('CREDITYUP_PLATFORM_VERSION', '1.0.0');
+define('CREDITYUP_PLATFORM_VERSION', '1.0.1');
 define('CREDITYUP_PLATFORM_FILE', __FILE__);
 define('CREDITYUP_PLATFORM_DIR', plugin_dir_path(__FILE__));
 

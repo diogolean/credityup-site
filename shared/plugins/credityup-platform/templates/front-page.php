@@ -77,8 +77,8 @@ $slots = credityup_home_slots();
                     <p>Rewards here are credits you choose to unlock by watching a short advertisement. They are not cash, a loan, a credit card, or a spending limit.</p>
                     <p><a href="<?php echo esc_url(credityup_free_credits_url()); ?>">Open the Free Credits topic</a></p>
                     <div class="cy-reward-mount" id="cy-reward-mount">
-                        <p>Watch a short ad to unlock a reward credit. The control stays on this page.</p>
-                        <a id="cy-reward-unlock" class="btn-winupads-trigger" href="#rewards">Reward unlock</a>
+                        <p id="cy-reward-hint">Watch a short ad to unlock a reward credit. The control stays on this page.</p>
+                        <a id="cy-reward-unlock" href="#rewards">Reward unlock</a>
                         <?php /* Maps to manifest web_rewarded / mobile_rewarded, the same units as the dating LPs. cooldown=60 matches the RAM 60s pause. */ ?>
                         <winupads tag="rewarded" rewarded trigger="#cy-reward-unlock" cooldown="60" prompt="Watch a short ad to unlock a reward credit. This is not cash or a loan." prompt-yes="Watch the ad" prompt-no="Not now"></winupads>
                     </div>

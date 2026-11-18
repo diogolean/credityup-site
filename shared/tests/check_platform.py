@@ -89,12 +89,26 @@ def main():
     topic = (plugin / "templates/free-credits.php").read_text(encoding="utf-8")
     if 'tag="rewarded"' not in home or 'trigger="#cy-reward-unlock"' not in home or 'id="rewards"' not in home or 'cooldown="60"' not in home:
         fail("home rewarded mount missing")
-    if 'tag="credits_rewarded"' in home:
-        fail("home still points at the missing credits_rewarded slot")
-    if 'tag="credits_rewarded"' not in topic or "free-credits" not in home_php or "Free Credits" not in home_php:
-        fail("free credits topic missing")
+    if 'tag="credits_rewarded"' in home or 'tag="credits_rewarded"' in topic or 'tag="credits_rewarded"' in home_php:
+        fail("templates still point at the missing credits_rewarded slot")
+    if "btn-winupads-trigger" in home or "btn-winupads-trigger" in topic:
+        fail("unlock link still shares the global trigger class")
+    if 'tag="rewarded"' not in topic or 'trigger="#cy-reward-unlock"' not in topic or 'cooldown="60"' not in topic:
+        fail("free credits rewarded mount missing")
+    if "$is_credits" not in topic or "free-credits" not in topic:
+        fail("archive template does not gate rewarded to free-credits")
+    if "credityup_print_slot" not in topic or "content1" not in topic or "content2" not in topic:
+        fail("category archive is missing content1/content2")
+    if "'content1'" not in home_php or "'content2'" not in home_php:
+        fail("archive slot list does not include content1 and content2")
+    if "is_category()" not in home_php:
+        fail("category archives are not hooked to the platform chrome")
     if "No articles in this topic yet" not in topic:
         fail("topic page has no room for future articles")
+    if "cy-rewarded-controller" not in home_php:
+        fail("rewarded controller script missing")
+    if "free-credits" not in home_php or "Free Credits" not in home_php:
+        fail("free credits topic missing")
     for lp_name in ("us/us_lp-01.html", "us/us_lp-02.html", "shared/snippets/04_rewarded_same_page_fix.html"):
         if "credits_rewarded" in (ROOT / lp_name).read_text(encoding="utf-8", errors="replace"):
             fail(f"credits tag leaked into {lp_name}")
