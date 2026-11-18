@@ -1,22 +1,107 @@
 <?php
 /**
- * Category archive for free-credits.
- * The credits_rewarded tag is inert until Winup adds the manifest keys.
+ * Category archive chrome, and the legal pages (Terms, Privacy, Cookie),
+ * for us.credityup.com.
+ * Free Credits also mounts the same Rewarded hook as the home.
  * Dating landing pages are not modified by this template.
+ * Category URLs stay /category/<slug>/. Legal URLs stay /terms-of-use/,
+ * /privacy-policy/, and /cookie-policy/.
  */
 
 if (!defined('ABSPATH')) {
     exit;
+}
+
+if (!function_exists('credityup_print_slot')) {
+    function credityup_print_slot($slot) {
+        $tag = isset($slot['tag']) ? preg_replace('/[^a-z0-9_-]/i', '', (string) $slot['tag']) : '';
+        if ($tag === '' || $tag === 'interstitial' || $tag === 'rewarded') {
+            return;
+        }
+        $min = isset($slot['min_height']) ? (int) $slot['min_height'] : 300;
+        $label = isset($slot['label']) ? (string) $slot['label'] : 'Advertisement';
+        echo '<aside class="cy-slot winup-ad-block winup-ad-block-1" style="min-height:' . (int) $min . 'px" aria-label="' . esc_attr($label) . '">';
+        echo '<span class="cy-slot-label">' . esc_html($label) . '</span>';
+        echo '<winupads tag="' . esc_attr($tag) . '" label="' . esc_attr($label) . '"></winupads>';
+        echo '</aside>';
+    }
+}
+if (!function_exists('credityup_archive_slots')) {
+    function credityup_archive_slots() {
+        return array(
+            array('tag' => 'content1', 'min_height' => 300, 'label' => 'Advertisement'),
+            array('tag' => 'content2', 'min_height' => 300, 'label' => 'Advertisement'),
+        );
+    }
+}
+if (!function_exists('credityup_english_date')) {
+    function credityup_english_date($post = null) {
+        if (function_exists('get_post_datetime')) {
+            $dt = get_post_datetime($post);
+            if ($dt instanceof DateTimeInterface) {
+                return $dt->format('M j, Y');
+            }
+        }
+        return '';
+    }
+}
+if (!function_exists('credityup_primary_nav')) {
+    function credityup_primary_nav() {
+        echo '<nav class="cy-nav" aria-label="Primary"></nav>';
+    }
+}
+if (!function_exists('credityup_is_legal_page')) {
+    function credityup_is_legal_page() {
+        return function_exists('is_page') && is_page(array('terms-of-use', 'privacy-policy', 'cookie-policy'));
+    }
+}
+
+$is_legal = credityup_is_legal_page();
+$is_credits = false;
+$slug = '';
+
+if ($is_legal) {
+    $title = function_exists('get_the_title') ? (string) get_the_title() : '';
+    if ($title === '') {
+        $page = get_queried_object();
+        $title = ($page && isset($page->post_title)) ? (string) $page->post_title : 'Legal';
+    }
+    $description = wp_strip_all_tags($title) . ' — Credityup.';
+    $lede = '';
+    $kicker = 'Credityup · Legal';
+} else {
+    $term = get_queried_object();
+    $slug = ($term && isset($term->slug)) ? (string) $term->slug : '';
+    $is_credits = ($slug === 'free-credits');
+    $title = $is_credits ? 'Free credits' : single_cat_title('', false);
+    $raw_desc = ($term && isset($term->description)) ? trim(wp_strip_all_tags((string) $term->description)) : '';
+    if ($is_credits) {
+        $description = 'Free credits on Credityup are rewards you unlock by watching an ad. They are not cash, loans, or credit products.';
+        $lede = 'A free credit here is a reward you choose to unlock by watching a short advertisement. It is not cash, a loan, a credit card, or a spending limit. Credityup does not lend money and does not sell credit products.';
+        $kicker = 'Rewards · Not a financial product';
+    } else {
+        $description = $raw_desc !== '' ? $raw_desc : ($title . ' guides, in plain language, from Credityup.');
+        $lede = $raw_desc !== '' ? $raw_desc : 'Plain-language dating guides in this topic. Credityup does not run a dating app and does not guarantee a match.';
+        $kicker = 'United States · Dating guides';
+    }
+}
+
+$content1 = array('tag' => 'content1', 'min_height' => 300, 'label' => 'Advertisement');
+$content2 = array('tag' => 'content2', 'min_height' => 300, 'label' => 'Advertisement');
+if (!$is_legal) {
+    $slots = credityup_archive_slots();
+    $content1 = isset($slots[0]) ? $slots[0] : $content1;
+    $content2 = isset($slots[1]) ? $slots[1] : $content2;
 }
 ?><!DOCTYPE html>
 <html <?php language_attributes(); ?>>
 <head>
 <meta charset="<?php bloginfo('charset'); ?>">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Free credits on Credityup are rewards you unlock by watching an ad. They are not cash, loans, or credit products.">
+<meta name="description" content="<?php echo esc_attr($description); ?>">
 <?php wp_head(); ?>
 </head>
-<body <?php body_class('cy-home cy-topic'); ?>>
+<body <?php body_class('cy-home' . ($is_legal ? ' cy-legal-page' : ' cy-archive') . ($is_credits ? ' cy-topic' : '')); ?>>
 <?php wp_body_open(); ?>
 <a class="cy-skip" href="#content">Skip to content</a>
 <header class="cy-bar">
@@ -28,42 +113,81 @@ if (!defined('ABSPATH')) {
 </header>
 <main id="content" class="cy-wrap">
     <section class="cy-hero">
-        <p class="cy-kicker">Rewards · Not a financial product</p>
-        <h1>Free credits</h1>
-        <p class="cy-lede">A free credit here is a reward you choose to unlock by watching a short advertisement. It is not cash, a loan, a credit card, or a spending limit. Credityup does not lend money and does not sell credit products.</p>
+        <p class="cy-kicker"><?php echo esc_html($kicker); ?></p>
+        <h1><?php echo esc_html($title); ?></h1>
+        <?php if ($lede !== '') : ?>
+        <p class="cy-lede"><?php echo esc_html($lede); ?></p>
+        <?php endif; ?>
     </section>
 
+    <?php if ($is_legal) : ?>
+    <article class="cy-legal">
+        <?php
+        if (have_posts()) {
+            while (have_posts()) {
+                the_post();
+                the_content();
+            }
+        }
+        ?>
+    </article>
+    <?php else : ?>
+
+    <?php credityup_print_slot($content1); ?>
+
+    <?php if ($is_credits) : ?>
     <section class="cy-section" id="rewards" aria-labelledby="cy-unlock-title">
         <h2 id="cy-unlock-title">Unlock</h2>
         <article class="cy-reward-panel">
             <p class="cy-kicker">Watch an ad</p>
-            <h3>The unlock is reserved, not switched on.</h3>
-            <p>When this is enabled, the button asks you to watch an ad before a reward credit is granted. Until then, the button stays on this page and does not grant a credit.</p>
+            <h3>A credit for watching an ad. Not a loan.</h3>
+            <p>Rewards here are credits you choose to unlock by watching a short advertisement. They are not cash, a loan, a credit card, or a spending limit.</p>
             <div class="cy-reward-mount" id="cy-reward-mount">
-                <p>Rewarded and Offerwall unlocks use this space. The control does not leave Credityup.</p>
+                <p id="cy-reward-hint">Watch a short ad to unlock a reward credit. The control stays on this page.</p>
                 <a id="cy-reward-unlock" href="#rewards">Reward unlock</a>
-                <winupads tag="credits_rewarded" rewarded trigger="#cy-reward-unlock" prompt="Watch a short ad to unlock a reward credit. This is not cash or a loan." prompt-yes="Watch the ad" prompt-no="Not now"></winupads>
+                <winupads tag="rewarded" rewarded trigger="#cy-reward-unlock" cooldown="60" prompt="Watch a short ad to unlock a reward credit. This is not cash or a loan." prompt-yes="Watch the ad" prompt-no="Not now"></winupads>
             </div>
         </article>
     </section>
+    <?php endif; ?>
 
     <section class="cy-section" aria-labelledby="cy-articles-title">
-        <h2 id="cy-articles-title">Articles</h2>
+        <h2 id="cy-articles-title"><?php echo $is_credits ? 'Articles' : 'In this topic'; ?></h2>
         <?php if (have_posts()) : ?>
-        <ul class="cy-list">
+        <div class="cy-archive-grid">
             <?php while (have_posts()) : the_post(); ?>
-            <li>
-                <a href="<?php the_permalink(); ?>">
-                    <h3><?php the_title(); ?></h3>
-                    <p class="cy-meta"><?php echo esc_html(get_the_date('M j, Y')); ?></p>
-                </a>
-            </li>
+                <?php
+                if (function_exists('credityup_print_archive_card')) {
+                    credityup_print_archive_card();
+                } else {
+                    $excerpt = wp_trim_words(wp_strip_all_tags((string) get_the_excerpt()), 22);
+                    echo '<article class="cy-archive-card"><a href="' . esc_url(get_permalink()) . '">';
+                    echo '<div class="cy-archive-media"></div><div class="cy-archive-body">';
+                    echo '<h3>' . esc_html(get_the_title()) . '</h3>';
+                    if ($excerpt !== '') {
+                        echo '<p class="cy-card-excerpt">' . esc_html($excerpt) . '</p>';
+                    }
+                    echo '</div></a></article>';
+                }
+                ?>
             <?php endwhile; ?>
-        </ul>
+        </div>
         <?php else : ?>
-        <p class="cy-empty">No articles in this topic yet. New Free Credits pieces will be listed here.</p>
+        <p class="cy-empty"><?php echo $is_credits ? 'No articles in this topic yet. New Free Credits pieces will be listed here.' : 'No articles in this topic yet.'; ?></p>
         <?php endif; ?>
     </section>
+
+    <?php credityup_print_slot($content2); ?>
+
+    <?php
+    the_posts_pagination(array(
+        'mid_size' => 1,
+        'prev_text' => 'Previous',
+        'next_text' => 'Next',
+        'class' => 'cy-pager',
+    ));
+    ?>
+    <?php endif; ?>
 </main>
 <footer class="cy-foot">
     <div class="cy-wrap">
@@ -72,7 +196,7 @@ if (!defined('ABSPATH')) {
             <a href="<?php echo esc_url(home_url('/privacy-policy/')); ?>">Privacy Policy</a>
             <a href="<?php echo esc_url(home_url('/cookie-policy/')); ?>">Cookie Policy</a>
         </nav>
-        <p>Credits on this page are rewards for watching an ad. They are not cash or a loan.</p>
+        <p><?php echo $is_credits ? 'Credits on this page are rewards for watching an ad. They are not cash or a loan.' : 'Credityup publishes guides. Advertisements on this site are labeled.'; ?></p>
     </div>
 </footer>
 <?php wp_footer(); ?>

@@ -87,12 +87,61 @@ def main():
     if "wp_head()" not in home or "wp_footer()" not in home:
         fail("home template dropped wp_head/wp_footer")
     topic = (plugin / "templates/free-credits.php").read_text(encoding="utf-8")
-    if 'tag="credits_rewarded"' not in home or 'trigger="#cy-reward-unlock"' not in home or 'id="rewards"' not in home:
-        fail("credits cascade mount missing on the home")
-    if 'tag="credits_rewarded"' not in topic or "free-credits" not in home_php or "Free Credits" not in home_php:
-        fail("free credits topic missing")
+    if 'tag="rewarded"' not in home or 'trigger="#cy-reward-unlock"' not in home or 'id="rewards"' not in home or 'cooldown="60"' not in home:
+        fail("home rewarded mount missing")
+    if 'tag="credits_rewarded"' in home or 'tag="credits_rewarded"' in topic or 'tag="credits_rewarded"' in home_php:
+        fail("templates still point at the missing credits_rewarded slot")
+    if "btn-winupads-trigger" in home or "btn-winupads-trigger" in topic:
+        fail("unlock link still shares the global trigger class")
+    if 'tag="rewarded"' not in topic or 'trigger="#cy-reward-unlock"' not in topic or 'cooldown="60"' not in topic:
+        fail("free credits rewarded mount missing")
+    if "$is_credits" not in topic or "free-credits" not in topic:
+        fail("archive template does not gate rewarded to free-credits")
+    if "credityup_print_slot" not in topic or "content1" not in topic or "content2" not in topic:
+        fail("category archive is missing content1/content2")
+    if "'content1'" not in home_php or "'content2'" not in home_php:
+        fail("archive slot list does not include content1 and content2")
+    if "is_category()" not in home_php:
+        fail("category archives are not hooked to the platform chrome")
     if "No articles in this topic yet" not in topic:
         fail("topic page has no room for future articles")
+    if "cy-rewarded-controller" not in home_php:
+        fail("rewarded controller script missing")
+    if "cy-slot-collapse" not in home_php or "cy-slot-empty" not in (plugin / "assets/home.css").read_text(encoding="utf-8"):
+        fail("empty ad-slot collapse missing")
+    if "cy-archive-grid" not in home or "credityup_english_date" not in home_php:
+        fail("home archive cards or English dates missing")
+    if "function_exists('credityup_print_slot')" not in topic:
+        fail("archive template is not guarded for a mid-deploy paste")
+    if "credityup_archive_template_ready" not in home_php:
+        fail("template_include is not guarded until the new archive template is present")
+    if "get_the_date(" in home or "get_the_date(" in topic:
+        fail("templates still use the localized get_the_date")
+    if "From the archive" in home or "From the archive" in topic:
+        fail("From the archive heading is still visible")
+    if "credityup_home_card_slugs" not in home_php:
+        fail("home cards are not curated to monetizing LP articles")
+    for slug in (
+        "best-easy-dating-apps-lp-01-art01",
+        "best-easy-dating-apps-lp-01-art02",
+        "best-easy-dating-apps-lp-01-art03",
+        "instant-matchmaking-apps-lp-02-art01",
+        "instant-matchmaking-apps-lp-02-art02",
+        "instant-matchmaking-apps-lp-02-art03",
+    ):
+        if slug not in home_php and slug not in home:
+            fail(f"home cards missing monetizing slug {slug}")
+    if "home_url('/#safety')" not in home_php:
+        fail("Safety menu is not pointed at the home #safety section")
+    if "credityup_legal_template_ready" not in home_php or "cy-legal" not in topic:
+        fail("legal pages are not wrapped in the new chrome")
+    css = (plugin / "assets/home.css").read_text(encoding="utf-8")
+    if "scroll-margin-top" not in css:
+        fail("Safety anchor can hide under the fixed bar")
+    if "credityup_english_date()" in (plugin / "includes/home.php").read_text(encoding="utf-8").split("function credityup_print_archive_card", 1)[-1].split("function credityup_rewarded_controller_script", 1)[0]:
+        fail("archive cards still print a date")
+    if "free-credits" not in home_php or "Free Credits" not in home_php:
+        fail("free credits topic missing")
     for lp_name in ("us/us_lp-01.html", "us/us_lp-02.html", "shared/snippets/04_rewarded_same_page_fix.html"):
         if "credits_rewarded" in (ROOT / lp_name).read_text(encoding="utf-8", errors="replace"):
             fail(f"credits tag leaked into {lp_name}")
