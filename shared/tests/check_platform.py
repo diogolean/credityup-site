@@ -87,8 +87,10 @@ def main():
     if "wp_head()" not in home or "wp_footer()" not in home:
         fail("home template dropped wp_head/wp_footer")
     topic = (plugin / "templates/free-credits.php").read_text(encoding="utf-8")
-    if 'tag="credits_rewarded"' not in home or 'trigger="#cy-reward-unlock"' not in home or 'id="rewards"' not in home:
-        fail("credits cascade mount missing on the home")
+    if 'tag="rewarded"' not in home or 'trigger="#cy-reward-unlock"' not in home or 'id="rewards"' not in home or 'cooldown="60"' not in home:
+        fail("home rewarded mount missing")
+    if 'tag="credits_rewarded"' in home:
+        fail("home still points at the missing credits_rewarded slot")
     if 'tag="credits_rewarded"' not in topic or "free-credits" not in home_php or "Free Credits" not in home_php:
         fail("free credits topic missing")
     if "No articles in this topic yet" not in topic:
