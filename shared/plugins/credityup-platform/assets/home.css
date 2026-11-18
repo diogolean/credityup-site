@@ -207,7 +207,8 @@ body.admin-bar .cy-bar { top: 32px; }
   font-size: 14px;
   font-weight: 650;
 }
-winupads[tag="credits_rewarded"] { display: none; }
+winupads[tag="credits_rewarded"],
+winupads[tag="rewarded"] { display: none; }
 .cy-guide {
   background: var(--cy-card);
   border: 1px solid var(--cy-line);

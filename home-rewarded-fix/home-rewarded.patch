@@ -1,0 +1,54 @@
+diff --git a/shared/plugins/credityup-platform/assets/home.css b/shared/plugins/credityup-platform/assets/home.css
+index 73194a7..1c27ff2 100644
+--- a/shared/plugins/credityup-platform/assets/home.css
++++ b/shared/plugins/credityup-platform/assets/home.css
+@@ -207,7 +207,8 @@ body.admin-bar .cy-bar { top: 32px; }
+   font-size: 14px;
+   font-weight: 650;
+ }
+-winupads[tag="credits_rewarded"] { display: none; }
++winupads[tag="credits_rewarded"],
++winupads[tag="rewarded"] { display: none; }
+ .cy-guide {
+   background: var(--cy-card);
+   border: 1px solid var(--cy-line);
+diff --git a/shared/plugins/credityup-platform/templates/front-page.php b/shared/plugins/credityup-platform/templates/front-page.php
+index ee090d9..6725c9d 100644
+--- a/shared/plugins/credityup-platform/templates/front-page.php
++++ b/shared/plugins/credityup-platform/templates/front-page.php
+@@ -74,13 +74,13 @@ $slots = credityup_home_slots();
+                 <article class="cy-reward-panel">
+                     <p class="cy-kicker">Rewards</p>
+                     <h3>A credit for watching an ad. Not a loan.</h3>
+-                    <p>Rewards here are credits you choose to unlock by watching a short advertisement. They are not cash, a loan, a credit card, or a spending limit. This block is ready for that unlock. It is not switched on, so watching an ad on this page does not grant a credit yet.</p>
++                    <p>Rewards here are credits you choose to unlock by watching a short advertisement. They are not cash, a loan, a credit card, or a spending limit.</p>
+                     <p><a href="<?php echo esc_url(credityup_free_credits_url()); ?>">Open the Free Credits topic</a></p>
+                     <div class="cy-reward-mount" id="cy-reward-mount">
+-                        <p>The Rewarded and Offerwall unlock will sit in this space. The control stays on this page.</p>
+-                        <a id="cy-reward-unlock" href="#rewards">Reward unlock</a>
+-                        <?php /* Inert until the ad-slots manifest has web_credits_rewarded / mobile_credits_rewarded. See PLAN.md. */ ?>
+-                        <winupads tag="credits_rewarded" rewarded trigger="#cy-reward-unlock" prompt="Watch a short ad to unlock a reward credit. This is not cash or a loan." prompt-yes="Watch the ad" prompt-no="Not now"></winupads>
++                        <p>Watch a short ad to unlock a reward credit. The control stays on this page.</p>
++                        <a id="cy-reward-unlock" class="btn-winupads-trigger" href="#rewards">Reward unlock</a>
++                        <?php /* Maps to manifest web_rewarded / mobile_rewarded, the same units as the dating LPs. cooldown=60 matches the RAM 60s pause. */ ?>
++                        <winupads tag="rewarded" rewarded trigger="#cy-reward-unlock" cooldown="60" prompt="Watch a short ad to unlock a reward credit. This is not cash or a loan." prompt-yes="Watch the ad" prompt-no="Not now"></winupads>
+                     </div>
+                 </article>
+             </div>
+diff --git a/shared/tests/check_platform.py b/shared/tests/check_platform.py
+index 50b44b4..16f21a6 100644
+--- a/shared/tests/check_platform.py
++++ b/shared/tests/check_platform.py
+@@ -87,8 +87,10 @@ def main():
+     if "wp_head()" not in home or "wp_footer()" not in home:
+         fail("home template dropped wp_head/wp_footer")
+     topic = (plugin / "templates/free-credits.php").read_text(encoding="utf-8")
+-    if 'tag="credits_rewarded"' not in home or 'trigger="#cy-reward-unlock"' not in home or 'id="rewards"' not in home:
+-        fail("credits cascade mount missing on the home")
++    if 'tag="rewarded"' not in home or 'trigger="#cy-reward-unlock"' not in home or 'id="rewards"' not in home or 'cooldown="60"' not in home:
++        fail("home rewarded mount missing")
++    if 'tag="credits_rewarded"' in home:
++        fail("home still points at the missing credits_rewarded slot")
+     if 'tag="credits_rewarded"' not in topic or "free-credits" not in home_php or "Free Credits" not in home_php:
+         fail("free credits topic missing")
+     if "No articles in this topic yet" not in topic:

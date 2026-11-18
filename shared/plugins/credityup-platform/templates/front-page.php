@@ -74,13 +74,13 @@ $slots = credityup_home_slots();
                 <article class="cy-reward-panel">
                     <p class="cy-kicker">Rewards</p>
                     <h3>A credit for watching an ad. Not a loan.</h3>
-                    <p>Rewards here are credits you choose to unlock by watching a short advertisement. They are not cash, a loan, a credit card, or a spending limit. This block is ready for that unlock. It is not switched on, so watching an ad on this page does not grant a credit yet.</p>
+                    <p>Rewards here are credits you choose to unlock by watching a short advertisement. They are not cash, a loan, a credit card, or a spending limit.</p>
                     <p><a href="<?php echo esc_url(credityup_free_credits_url()); ?>">Open the Free Credits topic</a></p>
                     <div class="cy-reward-mount" id="cy-reward-mount">
-                        <p>The Rewarded and Offerwall unlock will sit in this space. The control stays on this page.</p>
-                        <a id="cy-reward-unlock" href="#rewards">Reward unlock</a>
-                        <?php /* Inert until the ad-slots manifest has web_credits_rewarded / mobile_credits_rewarded. See PLAN.md. */ ?>
-                        <winupads tag="credits_rewarded" rewarded trigger="#cy-reward-unlock" prompt="Watch a short ad to unlock a reward credit. This is not cash or a loan." prompt-yes="Watch the ad" prompt-no="Not now"></winupads>
+                        <p>Watch a short ad to unlock a reward credit. The control stays on this page.</p>
+                        <a id="cy-reward-unlock" class="btn-winupads-trigger" href="#rewards">Reward unlock</a>
+                        <?php /* Maps to manifest web_rewarded / mobile_rewarded, the same units as the dating LPs. cooldown=60 matches the RAM 60s pause. */ ?>
+                        <winupads tag="rewarded" rewarded trigger="#cy-reward-unlock" cooldown="60" prompt="Watch a short ad to unlock a reward credit. This is not cash or a loan." prompt-yes="Watch the ad" prompt-no="Not now"></winupads>
                     </div>
                 </article>
             </div>
