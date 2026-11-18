@@ -51,11 +51,11 @@ Página inicial só em host `us.credityup.com` (filtro `credityup_home_enabled` 
 
 Arquitetura, de cima para baixo:
 
-1. Barra preta fixa (56px, `padding-top` igual no `body`, sem salto). Wordmark em SVG, sem o PNG de ~500KB. Links atuais: Home, Apps, Flirting, Love, Dating, Relationships, mais âncora Safety. Nav com scroll horizontal no mobile, sem menu JS.
-2. Hero só com texto (LCP). Sem imagem, sem webfont. Duas ações: as duas LPs.
-3. Slot in-page único.
-4. Dois guias (as LPs), em texto.
-5. Quatro posts reais (`WP_Query`, sem thumbnail).
+1. Barra preta fixa (56px no desktop; no mobile a altura sobe para caber a nav em duas linhas, `padding-top` igual no `body`). Wordmark em SVG, sem o PNG de ~500KB. Links atuais: Home, Apps, Flirting, Love, Dating, Relationships, mais âncoras Rewards e Safety. Nada de categoria é removido.
+2. Hero só com texto (LCP). Sem imagem, sem webfont. Duas ações: as duas LPs. A frase deixa claro que crédito aqui é recompensa por anúncio, não empréstimo nem dinheiro.
+3. Slot in-page único (`content1`).
+4. Dois polos lado a lado: guias de namoro à esquerda, bloco `#rewards` à direita. No mobile o bloco de recompensa vem logo abaixo dos guias.
+5. Quatro posts reais (`WP_Query`, sem thumbnail). O arquivo não filtra categoria, então um post de créditos que venha a existir continua aparecendo.
 6. Faixa de segurança (dinheiro, encontro, foto).
 7. Rodapé com Terms, Privacy, Cookies.
 
@@ -65,8 +65,35 @@ Arquitetura, de cima para baixo:
 |---|---|---|---|---|
 | In-feed | `content1` | Abaixo do hero, classe `winup-ad-block winup-ad-block-1`, label Advertisement | `min-height:300px`, largura máx. 336px, sem `contain:size` (o anúncio pode ser 300x250) | Tag que o manifesto já conhece nas LPs. A reserva existe antes do `wads.js` correr. |
 | Interstitial | `interstitial` | Head, plugin | Nenhuma (out-of-page) | Já impresso pelo `winup-ad-engine`. Não duplicar. |
-| Rewarded + Offerwall | slots `…_rewarded_20260930` e redirect do modal | Plugin + HFCM #4 | Nenhuma | Fora da página. O prompt de push fica em `z-index` baixo e só aparece se `#masterRewarded` não estiver `.active` e o loader não estiver na tela. |
+| Rewarded de namoro + Offerwall | slots `…_rewarded_20260930` e redirect do modal | Plugin + HFCM #4, em toda página via `wp_footer` | Nenhuma | Fora da página. O prompt de push fica em `z-index` baixo e só aparece se `#masterRewarded` não estiver `.active` e o loader não estiver na tela. |
+| Cascata de créditos (desligada) | `credits_rewarded` com `rewarded` e `trigger="#cy-reward-unlock"` | Dentro de `#rewards` | O cartão do controle tem `min-height:168px`. O anúncio em si é out-of-page, então não se reserva 300px para ele | A tag só pede anúncio quando o manifesto tiver a chave. Ver a seção abaixo. |
 | `content2`, `top`, `sidebar`, âncora | — | Não impressos | — | Tag ausente no manifesto vira buraco de 300px. Quando a Winup criar `web_content2` / `web_sidebar`, dá para acrescentar pelo filtro `credityup_home_slots`. |
+
+### Cascata de créditos (aberta, ainda desligada)
+
+Em 18/11/2026 o sitemap de `us.credityup.com` não tem página, categoria nem tag de credits/rewards. Categorias no ar: Apps, Flirting, Love, Dating, Relationships. O mesmo vale para `de.credityup.com` (apps, flirten, beziehungen, liebe, dating). Existem páginas fora desses polos (`/insurance-referral-income-how-it-works/`, `/compare-car-and-home-insurance-quotes/`, duas de certificado de marketing). O template não apaga post, página, categoria nem tag, e não mexe em `wads.js`, no head do `winup-ad-engine` nem no HFCM #4. Essas páginas de seguro e marketing não entram na capa: não são guia de namoro e não são o desbloqueio de recompensa.
+
+O que já está no site e permanece:
+
+- `wads.js` síncrono, rede `23340104016`. A escada de preço (chave `price`, ou `priceKey` se o manifesto trocar) já inclui os degraus de 300 a 1050. Ela só anda se o JSON de `erp.winup.network/api/public/ad-slots?domain=us.credityup.com` trouxer `cascade` ou `cascadesUtm` com `base`, `lowerBound`, `retryLimit` e, se quiserem, `decayPct` e `retryTimeout`.
+- Rewarded de namoro: plugin, units `us_credityup_com_web_rewarded_20260930` e `…_mobile_rewarded_20260930`, modal `#masterRewarded`. Offerwall desse fluxo é o destino do botão do modal (viralnetwork), reescrito para a própria URL pelo HFCM #4. Não foi alterado.
+- Interstitial no head, impresso pelo plugin. A home não imprime um segundo.
+
+O que a home acrescenta, sem comprar o anúncio:
+
+- `#cy-reward-unlock` é um link para `#rewards`, não um `<button>` (o pixel trata todo button como `InitiateCheckout`).
+- `<winupads tag="credits_rewarded" rewarded trigger="#cy-reward-unlock" …>`. O `wads.js` só monta se existir `web_credits_rewarded` ou `mobile_credits_rewarded`. Sem a chave, o elemento é ignorado e o clique não abre anúncio nem sai do site.
+
+Para a Winup ligar a cascata, sem deploy novo:
+
+1. Criar no manifesto do domínio `web_credits_rewarded` e `mobile_credits_rewarded`.
+2. `path` de um ad unit novo, separado dos units de namoro. Piso de 300–1050 no unit que as LPs já usam muda o preço do tráfego de Meta.
+3. `cascade.base` perto de 1050 e `cascade.lowerBound` perto de 300. A escada no `wads.js` já tem esses números; o tema não hardcoda preço.
+4. Tráfego direto: o script não expressa “UTM ausente”. `cascadesUtm` só casa um valor que já está na sessão (`utm_source`, `utm_medium`, `src_type`, …). O isolamento é a tag existir só na home. Quem está na LP de namoro não pede esse unit. Um piso só para um UTM específico usa `cascadesUtm` ou `cascadePath`.
+5. Se o Offerwall for o redirect do modal e não o rewarded do GPT, ele continua no plugin. Não apontar `#cy-reward-unlock` para a viralnetwork: o HFCM #4 reescreve esse tipo de destino, e o href deste controle fica em `#rewards`.
+6. Nada a mudar em `wads.js`, no head block nem nas settings do `winup-ad-engine`.
+
+O texto diz que o desbloqueio ainda não está ligado, para não prometer um crédito que o GAM não entrega. Não há oferta de empréstimo, cartão ou dinheiro.
 
 O `wads.js` continua síncrono. Adiá-lo melhora o FCP e corta a cascata; fica fora deste PR.
 

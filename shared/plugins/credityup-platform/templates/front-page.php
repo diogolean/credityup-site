@@ -32,6 +32,7 @@ $slots = credityup_home_slots();
         <a href="<?php echo esc_url(home_url('/category/love/')); ?>">Love</a>
         <a href="<?php echo esc_url(home_url('/category/dating/')); ?>">Dating</a>
         <a href="<?php echo esc_url(home_url('/category/relationships/')); ?>">Relationships</a>
+        <a href="#rewards">Rewards</a>
         <a href="#safety">Safety</a>
     </nav>
 </header>
@@ -39,7 +40,7 @@ $slots = credityup_home_slots();
     <section class="cy-hero">
         <p class="cy-kicker">United States · Dating guides</p>
         <h1>A quieter place to compare dating apps.</h1>
-        <p class="cy-lede">Credityup publishes plain-language guides for adults. We don't run a dating app, we don't sell matches, and we don't promise that someone is waiting.</p>
+        <p class="cy-lede">Credityup publishes plain-language dating guides, and keeps a separate place for reward credits you unlock by watching an ad. We don't run a dating app, sell matches, or offer loans or cash.</p>
         <div class="cy-actions">
             <a class="cy-btn cy-btn-primary" href="<?php echo esc_url(home_url('/best-easy-dating-apps-lp-01/')); ?>">Easy-to-use apps</a>
             <a class="cy-btn cy-btn-ghost" href="<?php echo esc_url(home_url('/instant-matchmaking-apps-lp-02/')); ?>">Instant matchmaking</a>
@@ -60,19 +61,37 @@ $slots = credityup_home_slots();
     </aside>
     <?php endforeach; ?>
 
-    <section class="cy-section" id="guides">
-        <h2>Start here</h2>
-        <div class="cy-guides">
-            <article class="cy-guide">
-                <p class="cy-kicker">Guide</p>
-                <h3><a href="<?php echo esc_url(home_url('/best-easy-dating-apps-lp-01/')); ?>">Easy dating apps, without the extra steps</a></h3>
-                <p>What to check in the first ten minutes: how long the profile is, who can see your photo, and where the message field sits.</p>
-            </article>
-            <article class="cy-guide">
-                <p class="cy-kicker">Guide</p>
-                <h3><a href="<?php echo esc_url(home_url('/instant-matchmaking-apps-lp-02/')); ?>">How instant matchmaking apps actually work</a></h3>
-                <p>Quick matching usually means location, a short profile, and an alert. It does not mean a person is already nearby.</p>
-            </article>
+    <section class="cy-section" aria-label="Dating guides and rewards">
+        <div class="cy-poles">
+            <div id="guides">
+                <h2>Dating guides</h2>
+                <div class="cy-guides-stack">
+                    <article class="cy-guide">
+                        <p class="cy-kicker">Guide</p>
+                        <h3><a href="<?php echo esc_url(home_url('/best-easy-dating-apps-lp-01/')); ?>">Easy dating apps, without the extra steps</a></h3>
+                        <p>What to check in the first ten minutes: how long the profile is, who can see your photo, and where the message field sits.</p>
+                    </article>
+                    <article class="cy-guide">
+                        <p class="cy-kicker">Guide</p>
+                        <h3><a href="<?php echo esc_url(home_url('/instant-matchmaking-apps-lp-02/')); ?>">How instant matchmaking apps actually work</a></h3>
+                        <p>Quick matching usually means location, a short profile, and an alert. It does not mean a person is already nearby.</p>
+                    </article>
+                </div>
+            </div>
+            <div id="rewards">
+                <h2>Free credits</h2>
+                <article class="cy-reward-panel">
+                    <p class="cy-kicker">Rewards</p>
+                    <h3>A credit for watching an ad. Not a loan.</h3>
+                    <p>Rewards here are credits you choose to unlock by watching a short advertisement. They are not cash, a loan, a credit card, or a spending limit. This block is ready for that unlock. It is not switched on, so watching an ad on this page does not grant a credit yet.</p>
+                    <div class="cy-reward-mount" id="cy-reward-mount">
+                        <p>The Rewarded and Offerwall unlock will sit in this space. The control stays on this page.</p>
+                        <a id="cy-reward-unlock" href="#rewards">Reward unlock</a>
+                        <?php /* Inert until the ad-slots manifest has web_credits_rewarded / mobile_credits_rewarded. See PLAN.md. */ ?>
+                        <winupads tag="credits_rewarded" rewarded trigger="#cy-reward-unlock" prompt="Watch a short ad to unlock a reward credit. This is not cash or a loan." prompt-yes="Watch the ad" prompt-no="Not now"></winupads>
+                    </div>
+                </article>
+            </div>
         </div>
     </section>
 

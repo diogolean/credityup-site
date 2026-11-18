@@ -86,6 +86,12 @@ def main():
         fail("home slot is not reserved")
     if "wp_head()" not in home or "wp_footer()" not in home:
         fail("home template dropped wp_head/wp_footer")
+    if 'tag="credits_rewarded"' not in home or 'trigger="#cy-reward-unlock"' not in home or 'id="rewards"' not in home:
+        fail("credits cascade mount missing")
+    if "loan" not in home.lower() and "not a loan" not in home.lower():
+        fail("rewards copy does not say this is not a loan")
+    if "<button" in home:
+        fail("home template added a button element")
 
     snippet4 = (ROOT / "shared/snippets/04_rewarded_same_page_fix.html").read_text(encoding="utf-8")
     snippet5 = (ROOT / "shared/snippets/05_cy_modern_loader.html").read_text(encoding="utf-8")
