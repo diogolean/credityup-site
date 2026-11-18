@@ -25,16 +25,7 @@ $slots = credityup_home_slots();
         <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 4 L28 26 H4 Z" fill="none" stroke="#ddd6fe" stroke-width="2"/><path d="M16 12 L23 26 H9 Z" fill="#a78bfa"/></svg>
         <span>credityup</span>
     </a>
-    <nav class="cy-nav" aria-label="Primary">
-        <a href="<?php echo esc_url(home_url('/')); ?>">Home</a>
-        <a href="<?php echo esc_url(home_url('/category/apps/')); ?>">Apps</a>
-        <a href="<?php echo esc_url(home_url('/category/flirting/')); ?>">Flirting</a>
-        <a href="<?php echo esc_url(home_url('/category/love/')); ?>">Love</a>
-        <a href="<?php echo esc_url(home_url('/category/dating/')); ?>">Dating</a>
-        <a href="<?php echo esc_url(home_url('/category/relationships/')); ?>">Relationships</a>
-        <a href="#rewards">Rewards</a>
-        <a href="#safety">Safety</a>
-    </nav>
+    <?php credityup_primary_nav(); ?>
 </header>
 <main id="content" class="cy-wrap">
     <section class="cy-hero">
@@ -84,6 +75,7 @@ $slots = credityup_home_slots();
                     <p class="cy-kicker">Rewards</p>
                     <h3>A credit for watching an ad. Not a loan.</h3>
                     <p>Rewards here are credits you choose to unlock by watching a short advertisement. They are not cash, a loan, a credit card, or a spending limit. This block is ready for that unlock. It is not switched on, so watching an ad on this page does not grant a credit yet.</p>
+                    <p><a href="<?php echo esc_url(credityup_free_credits_url()); ?>">Open the Free Credits topic</a></p>
                     <div class="cy-reward-mount" id="cy-reward-mount">
                         <p>The Rewarded and Offerwall unlock will sit in this space. The control stays on this page.</p>
                         <a id="cy-reward-unlock" href="#rewards">Reward unlock</a>

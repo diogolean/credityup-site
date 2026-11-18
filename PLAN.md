@@ -51,7 +51,7 @@ Página inicial só em host `us.credityup.com` (filtro `credityup_home_enabled` 
 
 Arquitetura, de cima para baixo:
 
-1. Barra preta fixa (56px no desktop; no mobile a altura sobe para caber a nav em duas linhas, `padding-top` igual no `body`). Wordmark em SVG, sem o PNG de ~500KB. Links atuais: Home, Apps, Flirting, Love, Dating, Relationships, mais âncoras Rewards e Safety. Nada de categoria é removido.
+1. Barra preta fixa (56px no desktop; no mobile a altura sobe para caber a nav, `padding-top` igual no `body`). Wordmark em SVG, sem o PNG de ~500KB. Links: Home, Apps, Flirting, Love, Dating, Relationships, Free Credits (`/category/free-credits/`), Safety. Nada de categoria é removido.
 2. Hero só com texto (LCP). Sem imagem, sem webfont. Duas ações: as duas LPs. A frase deixa claro que crédito aqui é recompensa por anúncio, não empréstimo nem dinheiro.
 3. Slot in-page único (`content1`).
 4. Dois polos lado a lado: guias de namoro à esquerda, bloco `#rewards` à direita. No mobile o bloco de recompensa vem logo abaixo dos guias.
@@ -89,7 +89,19 @@ Para a Winup ligar a cascata, sem deploy novo:
 1. Criar no manifesto do domínio `web_credits_rewarded` e `mobile_credits_rewarded`.
 2. `path` de um ad unit novo, separado dos units de namoro. Piso de 300–1050 no unit que as LPs já usam muda o preço do tráfego de Meta.
 3. `cascade.base` perto de 1050 e `cascade.lowerBound` perto de 300. A escada no `wads.js` já tem esses números; o tema não hardcoda preço.
-4. Tráfego direto: o script não expressa “UTM ausente”. `cascadesUtm` só casa um valor que já está na sessão (`utm_source`, `utm_medium`, `src_type`, …). O isolamento é a tag existir só na home. Quem está na LP de namoro não pede esse unit. Um piso só para um UTM específico usa `cascadesUtm` ou `cascadePath`.
+4. Tráfego direto: o script não expressa “UTM ausente”. `cascadesUtm` só casa um valor que já está na sessão (`utm_source`, `utm_medium`, `src_type`, …). A tag `credits_rewarded` existe na home e em `/category/free-credits/`. Não entra nas LPs de namoro. Um piso só para um UTM específico usa `cascadesUtm` ou `cascadePath`.
+
+### Tópico Free Credits no WordPress
+
+A nav “Free Credits” aponta para a categoria `free-credits`. O plugin, na primeira carga em `us.credityup.com`, cria essa categoria se ela não existir (nome Free Credits, slug `free-credits`) e troca o template do arquivo da categoria por `templates/free-credits.php`: intro, o mesmo cartão com `<winupads tag="credits_rewarded" rewarded trigger="#cy-reward-unlock">`, e a lista de posts da categoria. Sem posts, a página mostra o espaço vazio. As LPs de namoro, o `wads.js`, o modal Rewarded e os snippets HFCM não entram nisso.
+
+Passos manuais, se a categoria for criada antes de ativar o plugin ou se a criação automática não rodar:
+
+1. wp-admin → Posts → Categories → Add New Category.
+2. Name: `Free Credits`. Slug: `free-credits`. Parent: nenhum. Description: `Reward credits unlocked by watching an ad. Not cash, loans, or credit products.`
+3. A URL fica `/category/free-credits/` (o link da nav usa `get_term_link`, então respeita um category base diferente se o site já tiver um).
+4. Artigos futuros: Posts → Add New → marque só a categoria Free Credits. Não coloque o conteúdo das LPs de namoro nessa categoria.
+5. Menu do Hestia (páginas que não são a home): o plugin acrescenta “Free Credits” depois de Relationships se o menu já tiver as categorias Apps, Flirting, Love, Dating ou Relationships. Para conferir ou fazer à mão: Appearance → Menus → menu do header → adicionar a categoria Free Credits logo após Relationships. Não editar o HTML das LPs.
 5. Se o Offerwall for o redirect do modal e não o rewarded do GPT, ele continua no plugin. Não apontar `#cy-reward-unlock` para a viralnetwork: o HFCM #4 reescreve esse tipo de destino, e o href deste controle fica em `#rewards`.
 6. Nada a mudar em `wads.js`, no head block nem nas settings do `winup-ad-engine`.
 

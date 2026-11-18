@@ -86,8 +86,16 @@ def main():
         fail("home slot is not reserved")
     if "wp_head()" not in home or "wp_footer()" not in home:
         fail("home template dropped wp_head/wp_footer")
+    topic = (plugin / "templates/free-credits.php").read_text(encoding="utf-8")
     if 'tag="credits_rewarded"' not in home or 'trigger="#cy-reward-unlock"' not in home or 'id="rewards"' not in home:
-        fail("credits cascade mount missing")
+        fail("credits cascade mount missing on the home")
+    if 'tag="credits_rewarded"' not in topic or "free-credits" not in home_php or "Free Credits" not in home_php:
+        fail("free credits topic missing")
+    if "No articles in this topic yet" not in topic:
+        fail("topic page has no room for future articles")
+    for lp_name in ("us/us_lp-01.html", "us/us_lp-02.html", "shared/snippets/04_rewarded_same_page_fix.html"):
+        if "credits_rewarded" in (ROOT / lp_name).read_text(encoding="utf-8", errors="replace"):
+            fail(f"credits tag leaked into {lp_name}")
     if "loan" not in home.lower() and "not a loan" not in home.lower():
         fail("rewards copy does not say this is not a loan")
     if "<button" in home:
