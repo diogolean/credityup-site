@@ -106,11 +106,41 @@ def main():
     if "MODE = 'reload'" not in snippet4 or "slotRenderEnded" not in snippet5:
         fail("HFCM snippets 4 or 5 were edited")
 
-    # Step 1 values live in the post HTML. Later steps live in HFCM snippet #2,
-    # which this change does not replace. Both must still be in the snapshot.
     for value in ("quick_casual", "serious_relationship"):
         if value not in post1 or value not in post2:
             fail(f"quiz value missing from post html: {value}")
+    quiz = (ROOT / "shared/snippets/02_quiz_en.html").read_text(encoding="utf-8")
+    if "We found 3 highly compatible platforms" in quiz:
+        fail("quiz result claim was not replaced")
+    if "instant-matchmaking-apps-lp-02-art01" not in quiz or "best-easy-dating-apps-lp-01-art01" not in quiz:
+        fail("quiz CTA routing missing an LP article")
+    if "IS_LP2" not in quiz or "RESULT_TEXT" not in quiz:
+        fail("quiz snippet is not split per LP")
+    for hook in ("QuizStarted", "track', 'Lead'", "quick_casual", "verified_secure"):
+        if hook not in quiz:
+            fail(f"quiz snippet lost {hook}")
+    import re as _re
+    live = ROOT / "docs/history/live-2026-11-18"
+    for name in (
+        "lp-01-art01", "lp-01-art02", "lp-01-art03",
+        "lp-02-art01", "lp-02-art02", "lp-02-art03",
+    ):
+        post = (ROOT / "us/content" / f"{name}.post.html").read_text(encoding="utf-8")
+        if "hookup" in post.lower() or "patrocino" in post.lower() or "sophie" in post.lower():
+            fail(f"{name} contains a banned word")
+        if post.count('tag="content1"') != 1 or post.count('tag="content2"') != 1:
+            fail(f"{name} ad slots changed")
+        raw = (live / f"{name}.html").read_text(encoding="utf-8", errors="replace")
+        body_at = raw.find("<body")
+        start = raw.find('<div class="winup-ad-block', body_at)
+        end = raw.find('id="comments"', start)
+        for anchor in _re.findall(r'<a [^>]*data-pf="btn"[^>]*>[\s\S]*?</a>', raw[start:end]):
+            if anchor not in post:
+                fail(f"{name} lost a button")
+    for post_path in (ROOT / "us/content").glob("*.post.html"):
+        text = post_path.read_text(encoding="utf-8").lower()
+        if "hookup" in text or "patrocino" in text:
+            fail(f"banned word in {post_path.name}")
     for value in ("age_18_30", "age_31_50", "age_50_plus", "verified_secure", "people_nearby", "QuizStarted", "rewardedSlotGranted"):
         if value not in lp1:
             fail(f"snapshot lost quiz/pixel hook: {value}")

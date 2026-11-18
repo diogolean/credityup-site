@@ -89,7 +89,18 @@ Não há HTML desses artigos no git nem na Wayback. O único exemplar é o downl
 | `/instant-matchmaking-apps-lp-02-art02/` | Choosing Your Quick Connection App | `lp-02-art02.html` (arquivo grande, ~1,8 MB) | — |
 | `/instant-matchmaking-apps-lp-02-art03/` | Quick Encounters: Making Apps Work For You | `lp-02-art03.html` | — |
 
-Os artigos da LP-02 ainda têm “hookup” e “casual” no HTML. Esta rodada não reescreve esses posts. Os botões das LPs continuam apontando para eles.
+Os artigos da LP-02 ainda tinham “hookup” nesse HTML de 18/11. A reescrita para colar está em `us/content/lp-01-art01.post.html`, `lp-01-art02.post.html`, `lp-01-art03.post.html`, `lp-02-art01.post.html`, `lp-02-art02.post.html` e `lp-02-art03.post.html`. Cada arquivo guarda os dois slots (`content1` e `content2` com `lazy`) e os mesmos `<a data-pf="btn">`. O texto novo compara plano grátis com Tinder Gold, Tinder Platinum, Bumble Premium, Bumble Boost e Hinge+ / HingeX, sem preço inventado e sem a palavra hookup. A imagem enorme em base64 do art02 (mãos, telefones e um mapa dos EUA, não uma persona) fica só no HTML ao vivo; a versão para colar não a carrega.
+
+Prints de dois artigos, antes (HTML ao vivo) e depois (preview do que será colado):
+
+- LP-01 art01: `docs/screenshots/art-lp01-before-desktop.png`, `art-lp01-before-mobile.png`, `art-lp01-after-desktop.png`, `art-lp01-after-mobile.png`
+- LP-02 art01: `docs/screenshots/art-lp02-before-desktop.png`, `art-lp02-before-mobile.png`, `art-lp02-after-desktop.png`, `art-lp02-after-mobile.png`
+
+A tag `hookup-apps` não está no miolo colável. O WordPress ainda a imprime se ela continuar marcada no post. O `DEPLOY.md` manda tirá-la no editor.
+
+## Quiz
+
+O snippet compartilhado (HFCM #2) mandava o resultado das duas LPs para `/best-easy-dating-apps-lp-01-art01/` e dizia “We found 3 highly compatible platforms!”. O arquivo `shared/snippets/02_quiz_en.html` substitui esse snippet. Na LP-02 o botão final abre `/instant-matchmaking-apps-lp-02-art01/`. Na LP-01 o destino continua o art01 dela. A frase de resultado passa a descrever a comparação grátis/pago de cada LP. Passos, valores, `QuizStarted`, `Lead` e o rótulo “View Recommended Apps” ficam.
 
 ## Veredito da copy (eCPM)
 
@@ -101,4 +112,4 @@ A copy desta rodada está pronta para colar nas duas LPs.
 - O texto abaixo do quiz agora é o contexto que o bidder de dating nos EUA reconhece: plano grátis versus premium, o que Tinder Gold / Bumble Premium / Hinge+ e HingeX costumam vender (mais likes, ver quem curtiu, filtros, boost), e que o preço está na loja, não nesta página. Isso deve subir o lance contextual sem inventar preço.
 - O Rewarded continua o popup que o plugin já abre. Não há frase pedindo clique no anúncio.
 - “Hookup” saiu do miolo e das tags ocultas das duas LPs. O botão do quiz “Quick Casual Meetings” fica, porque o bloco do quiz é byte a byte o de produção.
-- Os artigos de destino não foram limpos. Publicar só as LPs melhora a página que concentra 49% e 40% das views. O funil inteiro só fica alinhado quando os `-art` forem reescritos numa rodada própria.
+- Os seis artigos de destino foram reescritos na mesma linha (plano grátis versus Tinder Gold, Tinder Platinum, Bumble Premium, Bumble Boost, Hinge+ e HingeX). O “hookup” sai do texto colável. A tag do post, se continuar marcada no wp-admin, ainda é impressa pelo tema — o `DEPLOY.md` manda apagá-la.
