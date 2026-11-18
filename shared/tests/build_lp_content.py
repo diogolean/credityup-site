@@ -10,50 +10,51 @@ import re
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 US = ROOT / "us"
 
-LP01_INTRO = """<p class="wp-block-paragraph">Most dating apps are not hard because of one clever feature. They are hard because the first ten minutes are a run of screens that never say what happens next.</p>
-<p class="wp-block-paragraph">This page is a map of the simpler ones. It will not name a winner, and it will not tell you a match is likely. It shows what to check before you create an account, then points you at a short guide on this same site.</p>"""
+LP01_INTRO = """<p class="wp-block-paragraph">Most of the easy dating apps in the United States let you start on a free plan. The paid decision shows up later, as a premium subscription. The names people compare are Tinder Gold, Bumble Premium, and Hinge's paid plans (Hinge+ and HingeX).</p>
+<p class="wp-block-paragraph">This page is about what those upgrades usually add, and what you can still do without them. It does not rank a winner, it does not start a subscription, and it does not promise a match. The guides linked below stay on this site.</p>"""
 
-LP01_BODY = """<h2 class="wp-block-heading">A short profile is a feature</h2>
-<p class="wp-block-paragraph">If an app asks for a long biography before you can see anyone, that is a product choice, not a test of character. Look for a flow you can finish in one sitting: a few photos, an age range, a city, and one honest line about what you want. You can add more later.</p>
-<h2 class="wp-block-heading">Filters should narrow the search, not hide the price</h2>
-<p class="wp-block-paragraph">Age, distance, and the kind of relationship you are open to are enough for a first pass. A wall of extra filters that only opens after a payment is a reason to read the price screen slowly. Recurring charges should be visible before you confirm them. Google Play's subscription notes are a useful checklist for that.</p>
-<h2 class="wp-block-heading">See who can view you</h2>
-<p class="wp-block-paragraph">Before you upload a face photo, open the privacy settings. You want a plain answer to three questions: who can see the photo, whether you appear in search, and how to pause the profile without deleting it. If those controls are hard to find, treat that as part of the decision.</p>
-<h2 class="wp-block-heading">The first message should be easy to find</h2>
-<p class="wp-block-paragraph">A usable app puts the conversation on the same screen as the match, with an ordinary text field. You do not need a perfect opening. One specific detail from the profile is enough. If the only way to talk is a paid sticker or a timed game, decide whether that is the conversation you wanted.</p>
-<h2 class="wp-block-heading">Meeting up</h2>
-<p class="wp-block-paragraph">If you do meet, keep the first meeting in a public place, tell a friend where you are going, and use your own way home. Do not send money, gift cards, or identity documents to someone you have not met. The FTC's notes on romance scams are short and worth reading.</p>
+LP01_BODY = """<h2 class="wp-block-heading">What the free plan usually includes</h2>
+<p class="wp-block-paragraph">On a free plan you can typically create a profile, set an age range and a distance, and send a limited number of likes or introductions. Use that week before you pay. It tells you whether people nearby are active, and whether the app is actually easy to finish a profile in one sitting: a few photos, a city, and one honest line about what you want.</p>
+<h2 class="wp-block-heading">Tinder Gold, Bumble Premium, and Hinge's paid plans</h2>
+<p class="wp-block-paragraph">These are the premium subscriptions US advertisers and app stores put next to the free tier. Tinder Gold is the Tinder plan built around seeing who already liked you, on top of a fast deck of profiles. Bumble Premium sits on Bumble's free messaging rules and usually adds more filters and more control over who can reach you. Hinge's paid plans, Hinge+ and HingeX, sit on top of an app that asks for prompts instead of a one-line bio. Plan names change. The current name is on the product page inside the app.</p>
+<p class="wp-block-paragraph">What the paid plan usually sells is the same short list: more likes, a look at who already liked you, extra filters, and a boost that shows your profile to more people for a short time. The monthly price and the renewal date are on the Google Play or App Store listing, and again on the confirm screen. They are not the same in every state or every promotion. Read that screen. A review that quotes a dollar amount is already out of date.</p>
+<h2 class="wp-block-heading">Compare the extra, not the badge</h2>
+<p class="wp-block-paragraph">A useful comparison is one question: which single extra would change how you use the free plan you already tried? If you would not pay for "see who liked you", unlimited likes, or a boost, the premium subscription is optional. None of these plans is a match guarantee, and a paid badge is not a sign that someone is a better fit.</p>
+<h2 class="wp-block-heading">Verification is not included just because you paid</h2>
+<p class="wp-block-paragraph">Photo verification and phone verification are separate from the premium tier. Check whether the app offers them, who can see a verified photo, and how to pause the profile without deleting it. A subscription does not make a profile honest. Before a first meeting, pick a public place, use your own way home, and do not send money, gift cards, or identity documents to someone you have not met.</p>
 <h2 class="wp-block-heading">Where the buttons go</h2>
-<p class="wp-block-paragraph">The three buttons under the quiz stay on us.credityup.com. One opens the shorter beginner guide, one opens practical tips, and one opens the longer walkthrough. None of them leave this domain, and none of them create an account for you.</p>
-<p class="wp-block-paragraph"><em>Conditions vary by app and by state. Check the app's own rules and the store listing before you pay for anything.</em></p>
+<p class="wp-block-paragraph">The three buttons under the quiz stay on us.credityup.com. One opens the shorter beginner guide, one opens practical tips, and one opens the longer walkthrough. None of them open an app store, and none of them start a paid plan.</p>
+<p class="wp-block-paragraph"><em>Prices, plan names, and renewal terms vary by app and by store. Read the listing before you subscribe. Conditions vary by state.</em></p>
 <p class="wp-block-paragraph">Sources: Federal Trade Commission — Data Security; FTC — Online Dating Scams; Google Play — Subscriptions.</p>
-<div style="display:none;">Keyword: easy dating apps<br>
-Tags: dating apps for beginners, simple dating apps, privacy settings, first message, online dating safety<br>
+<div style="display:none;">Keyword: easy dating apps premium subscription<br>
+Tags: free vs paid dating apps, Tinder Gold, Bumble Premium, Hinge+, HingeX, premium subscription, profile verification, dating app pricing<br>
 Category: Dating<br>
-Meta: How to judge a dating app by the effort it asks of you: profile length, filters, privacy, and the first message. Guides stay on Credityup.<br>
+Meta: What the free plan includes, and what Tinder Gold, Bumble Premium, and Hinge paid plans usually add. Prices are on the store listing. Guides stay on Credityup.<br>
 Slug: /best-easy-dating-apps-lp-01</div>"""
 
-LP02_INTRO = """<p class="wp-block-paragraph">"Instant matchmaking" sounds like a person is already nearby and ready to meet. In the product it usually means something narrower: the app shortens the path from opening it to sending a message, often with your location and a very small profile.</p>
-<p class="wp-block-paragraph">Speed is not the same thing as compatibility. Use this page to see what the shortcut includes, what it leaves out, and how to keep your information small until you have a reason to share more.</p>"""
+LP02_INTRO = """<p class="wp-block-paragraph">"Instant matchmaking" usually means a short profile, your location, and an alert, so the path from opening the app to sending a message is short. It does not mean someone is already nearby, and it does not mean the app is free past the first screen.</p>
+<p class="wp-block-paragraph">The paid screen is a separate product: a boost, more likes, or a look at who already responded. On the big US apps those upgrades are sold as Tinder Gold, Bumble Premium, and Hinge's paid plans. This page explains the free part and the paid part, then stays on this site.</p>"""
 
-LP02_BODY = """<h2 class="wp-block-heading">What the shortcut is made of</h2>
-<p class="wp-block-paragraph">These apps tend to lean on three tools. Location, so the list is people who could actually meet. A short profile, so you are not writing a biography first. And an alert, so a new message does not wait until you remember to open the app. If one of the three is missing, "instant" is mostly a label.</p>
+LP02_BODY = """<h2 class="wp-block-heading">What you get before any premium subscription</h2>
+<p class="wp-block-paragraph">Before a paid plan, these apps tend to offer three things. Location, so the list can be people who could actually meet. A short profile, so you are not writing a biography first. And an alert, so a new message does not wait until you remember to open the app. If one of the three is missing, "instant" is a label. Use the free plan long enough to see whether replies arrive in your city.</p>
+<h2 class="wp-block-heading">Boosts, extra likes, and "see who liked you"</h2>
+<p class="wp-block-paragraph">The upgrade screen is where Tinder Gold, Bumble Premium, and Hinge+ or HingeX show up, even inside apps that advertise a fast start. The extras are usually a boost, a higher like limit, and a list of people who already liked you. That is a premium subscription with a renewal date. The price is on the store listing and on the confirm screen, and it changes. A boost does not create a compatible person. It only shows the profile you already wrote to more people for a short time.</p>
 <h2 class="wp-block-heading">Say what you want before the thread gets long</h2>
 <p class="wp-block-paragraph">The fastest way to waste a conversation is to discover, ten messages in, that you wanted different things. One clear line — dating, a relationship, or friendship — saves both people time. You do not owe anyone a more personal story than that on the first day.</p>
+<h2 class="wp-block-heading">Verification, distance, and your real address</h2>
+<p class="wp-block-paragraph">Photo verification and a premium badge are different products. Paying does not verify the other person. Location features need a permission; approximate location is enough when the app offers it. Do not type your home address, workplace, or daily route into a chat. Read the privacy policy once: what other users can see, what is kept if you delete the account, and whether photos are used for anything besides your profile.</p>
 <h2 class="wp-block-heading">A global member count is not your city</h2>
-<p class="wp-block-paragraph">An app can quote a huge member count and still be quiet where you live on a Tuesday night. Spend a few minutes looking at how recent the profiles feel and whether replies actually arrive. That look is more useful than a review that repeats a worldwide total.</p>
-<h2 class="wp-block-heading">Photos, distance, and your real address</h2>
-<p class="wp-block-paragraph">Location features need a permission. Give the app approximate location if that option exists, and do not type your home address, workplace, or daily route into a chat. Read the privacy policy once, looking only for what other users can see, what is kept if you delete the account, and whether photos are used for anything besides your profile.</p>
+<p class="wp-block-paragraph">An app can quote a huge member count and still be quiet where you live on a Tuesday night. A few minutes of real replies tells you more than a review that repeats a worldwide total, and more than a paid boost spent on an empty area.</p>
 <h2 class="wp-block-heading">The first in-person plan</h2>
 <p class="wp-block-paragraph">Public place, your own transport, and a friend who knows the plan. Leave if the conversation turns to money, an investment, or a request to move to another app immediately. Those are common romance-scam patterns, and the FTC describes them in plain language.</p>
 <h2 class="wp-block-heading">The buttons stay on this site</h2>
-<p class="wp-block-paragraph">The buttons under the quiz open other Credityup guides. They do not open an app store and they do not complete a signup for you.</p>
-<p class="wp-block-paragraph"><em>Conditions vary by app and by state. Check the app's own rules and the store listing before you pay for anything.</em></p>
-<p class="wp-block-paragraph">Sources: Federal Trade Commission — Dating and Romance Scams; National Cyber Security Alliance — Online Dating Safety.</p>
-<div style="display:none;">Keyword: instant matchmaking apps<br>
-Tags: instant matchmaking, quick matching, location based dating, dating app privacy, online dating safety<br>
+<p class="wp-block-paragraph">The buttons under the quiz open other Credityup guides. They do not open an app store and they do not start a Tinder Gold, Bumble Premium, or Hinge subscription for you.</p>
+<p class="wp-block-paragraph"><em>Prices, plan names, and renewal terms vary by app and by store. Read the listing before you subscribe. Conditions vary by state.</em></p>
+<p class="wp-block-paragraph">Sources: Federal Trade Commission — Dating and Romance Scams; National Cyber Security Alliance — Online Dating Safety; Google Play — Subscriptions.</p>
+<div style="display:none;">Keyword: instant matchmaking apps premium subscription<br>
+Tags: instant matchmaking, free vs paid dating apps, Tinder Gold, Bumble Premium, Hinge+, boost, see who liked you, profile verification<br>
 Category: Dating<br>
-Meta: What quick matching uses — location, a short profile, alerts — and the checks to make before you rely on it. You stay on Credityup.<br>
+Meta: How quick matching works before you pay, and how boosts and premium subscriptions differ from verification. You stay on Credityup.<br>
 Slug: /instant-matchmaking-apps-lp-02</div>"""
 
 CHROME = """<!DOCTYPE html>
@@ -171,13 +172,13 @@ def main() -> None:
 
     post1 = build_post(
         prefix1, LP01_INTRO, links1, LP01_BODY, "",
-        "Easy dating apps, without the extra steps",
-        "How to judge a dating app by the effort it asks of you: profile length, filters, privacy, and the first message. Guides stay on Credityup.",
+        "Easy dating apps: free plans vs Tinder Gold, Bumble Premium, and Hinge",
+        "What the free plan includes, and what Tinder Gold, Bumble Premium, and Hinge paid plans usually add. Prices are on the store listing. Guides stay on Credityup.",
     )
     post2 = build_post(
         prefix2, LP02_INTRO, links2, LP02_BODY, credit2,
-        "How instant matchmaking apps actually work",
-        "What quick matching uses — location, a short profile, alerts — and the checks to make before you rely on it. You stay on Credityup.",
+        "Instant matchmaking apps: free use, paid boosts, and what to check",
+        "How quick matching works before you pay, and how boosts and premium subscriptions differ from verification. You stay on Credityup.",
     )
     out = US / "content"
     out.mkdir(parents=True, exist_ok=True)
@@ -201,9 +202,9 @@ def main() -> None:
     preview.mkdir(parents=True, exist_ok=True)
     pages = {
         "before-lp-01.html": ("Streamlined Dating: Discovering User-Friendly Apps", "Streamlined Dating: Discovering User-Friendly Apps", editorial_before(lp1), ""),
-        "after-lp-01.html": ("Easy dating apps, without the extra steps", "Easy dating apps, without the extra steps", post1, extra),
+        "after-lp-01.html": ("Easy dating apps: free plans vs Tinder Gold, Bumble Premium, and Hinge", "Easy dating apps: free plans vs Tinder Gold, Bumble Premium, and Hinge", post1, extra),
         "before-lp-02.html": ("Swift Dating: Explore Instant Match Solutions", "Swift Dating: Explore Instant Match Solutions", editorial_before(lp2), ""),
-        "after-lp-02.html": ("How instant matchmaking apps actually work", "How instant matchmaking apps actually work", post2, extra),
+        "after-lp-02.html": ("Instant matchmaking apps: free use, paid boosts, and what to check", "Instant matchmaking apps: free use, paid boosts, and what to check", post2, extra),
     }
     for name, (title, h1, body, more) in pages.items():
         html = CHROME.format(title=title, h1=h1, body=preview_body(body), extra=more)

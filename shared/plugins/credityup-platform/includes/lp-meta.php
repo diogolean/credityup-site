@@ -11,12 +11,12 @@ if (!defined('ABSPATH')) {
 function credityup_lp_copy_map() {
     return array(
         'best-easy-dating-apps-lp-01' => array(
-            'title' => 'Easy dating apps, without the extra steps',
-            'description' => 'How to judge a dating app by the effort it asks of you: profile length, filters, privacy, and the first message. Guides stay on Credityup.',
+            'title' => 'Easy dating apps: free plans vs Tinder Gold, Bumble Premium, and Hinge',
+            'description' => 'What the free plan includes, and what Tinder Gold, Bumble Premium, and Hinge paid plans usually add. Prices are on the store listing. Guides stay on Credityup.',
         ),
         'instant-matchmaking-apps-lp-02' => array(
-            'title' => 'How instant matchmaking apps actually work',
-            'description' => 'What quick matching uses — location, a short profile, alerts — and the checks to make before you rely on it. You stay on Credityup.',
+            'title' => 'Instant matchmaking apps: free use, paid boosts, and what to check',
+            'description' => 'How quick matching works before you pay, and how boosts and premium subscriptions differ from verification. You stay on Credityup.',
         ),
     );
 }

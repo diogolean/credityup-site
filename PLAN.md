@@ -1,6 +1,6 @@
 # Plano — home, LPs, push e e-mail (us.credityup.com)
 
-Estado auditado em 18/11/2026. Os snapshots em `us/*.html` e `de/*.html` são o baseline de 15/10/2026. A home e o `<head>` ao vivo já andaram (loader azul `cy-v4`, atraso de GTM/pixel, `.winup-ad-block{min-height:300px}`). Este plano não reverte nada disso.
+Estado auditado em 18/11/2026. Os snapshots em `us/*.html` e `de/*.html` são o baseline de 15/10/2026. O antes/depois com HTML e prints, mais a busca na Wayback, está em `docs/HISTORY.md`. A copy das duas LPs foi reescrita de novo para intenção de assinatura (Tinder Gold, Bumble Premium, Hinge+), sem mudar quiz, botões nem `content1`. A home e o `<head>` ao vivo já andaram (loader azul `cy-v4`, atraso de GTM/pixel, `.winup-ad-block{min-height:300px}`). Este plano não reverte nada disso.
 
 Não há pipeline de deploy neste repositório: nenhum CI, `wp-cli`, rsync ou workflow. Publicar continua manual, pelo wp-admin e por cópia de arquivos na raiz do WordPress. Nada daqui foi para produção.
 
