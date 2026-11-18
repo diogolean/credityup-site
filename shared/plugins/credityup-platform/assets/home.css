@@ -207,7 +207,8 @@ body.admin-bar .cy-bar { top: 32px; }
   font-size: 14px;
   font-weight: 650;
 }
-winupads[tag="credits_rewarded"] { display: none; }
+winupads[tag="credits_rewarded"],
+winupads[tag="rewarded"] { display: none; }
 .cy-guide {
   background: var(--cy-card);
   border: 1px solid var(--cy-line);
@@ -263,6 +264,53 @@ winupads[tag="credits_rewarded"] { display: none; }
   .cy-hero { padding-top: 28px; }
   .cy-poles, .cy-safety { grid-template-columns: 1fr; }
 }
+
+
+.cy-nav a.is-current,
+.cy-nav a[aria-current="page"] {
+  color: #fff;
+  box-shadow: inset 0 -2px 0 #a78bfa;
+}
+
+.cy-cards { display: grid; gap: 16px; }
+.cy-card {
+  background: var(--cy-card);
+  border: 1px solid var(--cy-line);
+  border-radius: 16px;
+  padding: 22px 22px 20px;
+}
+.cy-card h3 { margin: 0 0 8px; font-size: 22px; letter-spacing: -0.02em; line-height: 1.2; }
+.cy-card h3 a { color: inherit; text-decoration: none; }
+.cy-card h3 a:hover { color: var(--cy-purple); }
+.cy-card-excerpt { margin: 8px 0 0; color: var(--cy-muted); }
+
+.cy-pager { margin: 8px 0 28px; }
+.cy-pager .nav-links,
+.cy-pager .pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.cy-pager .nav-links { margin: 0; }
+.cy-pager .page-numbers,
+.cy-pager a,
+.cy-pager span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--cy-card);
+  border: 1px solid var(--cy-line);
+  color: var(--cy-ink);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 650;
+}
+.cy-pager .current { background: var(--cy-ink); color: #fff; border-color: var(--cy-ink); }
+
+body.cy-archive .cy-hero h1 { max-width: 18ch; }
 
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }
