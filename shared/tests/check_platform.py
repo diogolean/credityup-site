@@ -116,9 +116,19 @@ def main():
         fail("quiz CTA routing missing an LP article")
     if "IS_LP2" not in quiz or "RESULT_TEXT" not in quiz:
         fail("quiz snippet is not split per LP")
-    for hook in ("QuizStarted", "track', 'Lead'", "quick_casual", "verified_secure"):
+    for hook in ("QuizStarted", "CompleteRegistration", "quick_casual", "verified_secure"):
         if hook not in quiz:
             fail(f"quiz snippet lost {hook}")
+    if "fbq('track', 'Lead')" in quiz:
+        fail("quiz result must not fire Lead")
+    ab = (ROOT / "shared/snippets/15_cy_ab_reward.html").read_text(encoding="utf-8")
+    for piece in ("cy_ab", "variant !== 'B'", "pf-dbtn", "60000", "4000", "Skip", "Watch a short ad to see your recommended apps?"):
+        if piece not in ab:
+            fail(f"A/B snippet missing {piece}")
+    if 'tag="interstitial"' in ab or "fbq('track', 'Lead')" in ab:
+        fail("A/B snippet adds an interstitial or a Lead event")
+    if "best-easy-dating-apps-lp-01-art01" not in ab or "instant-matchmaking-apps-lp-02-art01" not in ab:
+        fail("A/B snippet lost an article URL")
     import re as _re
     live = ROOT / "docs/history/live-2026-11-18"
     for name in (

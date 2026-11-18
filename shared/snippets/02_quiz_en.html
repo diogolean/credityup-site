@@ -2,7 +2,8 @@
 Replace HFCM snippet #2 "Quiz En JS" with this file. Header, sitewide, active.
 LP-01 still ends on /best-easy-dating-apps-lp-01-art01/.
 LP-02 now ends on /instant-matchmaking-apps-lp-02-art01/.
-Steps, values, QuizStarted, Lead, and the result button label are unchanged.
+Steps, values, QuizStarted, and the result button label are unchanged.
+The result event is CompleteRegistration (the rewarded listener already sends Lead).
 -->
 <!-- HFCM by 99 Robots - Snippet # 2: Quiz En JS -->
 <script>
@@ -130,7 +131,7 @@ Steps, values, QuizStarted, Lead, and the result button label are unchanged.
 		if (quiz.getAttribute('data-qwu-lead') !== '1' && window.fbq) {
 			quiz.setAttribute('data-qwu-lead', '1');
 			try {
-				window.fbq('track', 'Lead');
+				window.fbq('track', 'CompleteRegistration', { content_name: 'Quiz_Result_Shown_EN' });
 			} catch (err) {}
 		}
 		paintButtons(quiz, [{ label: 'View Recommended Apps ➔', value: '__cta__' }]);

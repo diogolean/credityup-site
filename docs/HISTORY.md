@@ -102,6 +102,10 @@ A tag `hookup-apps` não está no miolo colável. O WordPress ainda a imprime se
 
 O snippet compartilhado (HFCM #2) mandava o resultado das duas LPs para `/best-easy-dating-apps-lp-01-art01/` e dizia “We found 3 highly compatible platforms!”. O arquivo `shared/snippets/02_quiz_en.html` substitui esse snippet. Na LP-02 o botão final abre `/instant-matchmaking-apps-lp-02-art01/`. Na LP-01 o destino continua o art01 dela. A frase de resultado passa a descrever a comparação grátis/pago de cada LP. Passos, valores, `QuizStarted`, `Lead` e o rótulo “View Recommended Apps” ficam.
 
+## Teste A/B do rewarded opt-in
+
+Ainda não publicado. Snippet `shared/snippets/15_cy_ab_reward.html` e checklist `DEPLOY-AB.md`. A variante A não muda o clique. A variante B, depois do e-mail opcional, pergunta se a pessoa quer ver um anúncio curto para abrir o artigo, com Skip. O popup RAM da entrada, o interstitial e os slots `content1`/`content2` continuam. Se já houver rewarded ativo ou a pausa de 60s não acabou, não pede outro. Prints do fluxo B: `docs/screenshots/ab-quiz-b-desktop.png`, `ab-quiz-b-mobile.png`, `ab-article-b-desktop.png`, `ab-article-b-mobile.png`.
+
 ## Veredito da copy (eCPM)
 
 A copy nova anterior (guia genérico de “perfil curto” e “simplicidade”, sem nome de plano) era mais segura que o texto ao vivo, mas mais fraca para o lance contextual do AdX: não citava assinatura premium, Tinder Gold, Bumble Premium, Hinge, boost nem verificação. Não estava pronta se o objetivo é eCPM.
