@@ -74,13 +74,13 @@ $slots = credityup_home_slots();
                 <article class="cy-reward-panel">
                     <p class="cy-kicker">Rewards</p>
                     <h3>A credit for watching an ad. Not a loan.</h3>
-                    <p>Rewards here are credits you choose to unlock by watching a short advertisement. They are not cash, a loan, a credit card, or a spending limit. This block is ready for that unlock. It is not switched on, so watching an ad on this page does not grant a credit yet.</p>
+                    <p>Rewards here are credits you choose to unlock by watching a short advertisement. They are not cash, a loan, a credit card, or a spending limit.</p>
                     <p><a href="<?php echo esc_url(credityup_free_credits_url()); ?>">Open the Free Credits topic</a></p>
                     <div class="cy-reward-mount" id="cy-reward-mount">
-                        <p>The Rewarded and Offerwall unlock will sit in this space. The control stays on this page.</p>
+                        <p id="cy-reward-hint">Watch a short ad to unlock a reward credit. The control stays on this page.</p>
                         <a id="cy-reward-unlock" href="#rewards">Reward unlock</a>
-                        <?php /* Inert until the ad-slots manifest has web_credits_rewarded / mobile_credits_rewarded. See PLAN.md. */ ?>
-                        <winupads tag="credits_rewarded" rewarded trigger="#cy-reward-unlock" prompt="Watch a short ad to unlock a reward credit. This is not cash or a loan." prompt-yes="Watch the ad" prompt-no="Not now"></winupads>
+                        <?php /* Maps to manifest web_rewarded / mobile_rewarded, the same units as the dating LPs. cooldown=60 matches the RAM 60s pause. */ ?>
+                        <winupads tag="rewarded" rewarded trigger="#cy-reward-unlock" cooldown="60" prompt="Watch a short ad to unlock a reward credit. This is not cash or a loan." prompt-yes="Watch the ad" prompt-no="Not now"></winupads>
                     </div>
                 </article>
             </div>
@@ -98,21 +98,33 @@ $slots = credityup_home_slots();
         ?>
     <section class="cy-section" aria-labelledby="cy-archive-title">
         <h2 id="cy-archive-title">From the archive</h2>
-        <ul class="cy-list">
+        <div class="cy-archive-grid">
             <?php while ($archive->have_posts()) : $archive->the_post(); ?>
-            <li>
-                <a href="<?php the_permalink(); ?>">
-                    <h3><?php the_title(); ?></h3>
-                    <p class="cy-meta"><?php echo esc_html(get_the_date('M j, Y')); ?><?php
-                        $cats = get_the_category();
-                        if ($cats) {
-                            echo ' · ' . esc_html($cats[0]->name);
-                        }
-                    ?></p>
-                </a>
-            </li>
+                <?php
+                if (function_exists('credityup_print_archive_card')) {
+                    credityup_print_archive_card();
+                } else {
+                    $date = function_exists('credityup_english_date') ? credityup_english_date() : '';
+                    $excerpt = function_exists('wp_trim_words') ? wp_trim_words(wp_strip_all_tags((string) get_the_excerpt()), 22) : '';
+                    $cats = get_the_category();
+                    $name = ($cats && isset($cats[0]->name)) ? (string) $cats[0]->name : '';
+                    echo '<article class="cy-archive-card"><a href="' . esc_url(get_permalink()) . '">';
+                    echo '<div class="cy-archive-media"></div><div class="cy-archive-body">';
+                    if ($name !== '') {
+                        echo '<p class="cy-archive-chip">' . esc_html($name) . '</p>';
+                    }
+                    echo '<h3>' . esc_html(get_the_title()) . '</h3>';
+                    if ($date !== '') {
+                        echo '<p class="cy-meta">' . esc_html($date) . '</p>';
+                    }
+                    if ($excerpt !== '') {
+                        echo '<p class="cy-card-excerpt">' . esc_html($excerpt) . '</p>';
+                    }
+                    echo '</div></a></article>';
+                }
+                ?>
             <?php endwhile; ?>
-        </ul>
+        </div>
     </section>
         <?php
         wp_reset_postdata();
